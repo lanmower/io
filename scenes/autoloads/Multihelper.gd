@@ -40,9 +40,8 @@ func join_game(address = ""):
 	var peer = WebSocketMultiplayerPeer.new()
 	var error
 	if Constants.USE_SSL:
-		var cert := load(Constants.TRUSTED_CHAIN_PATH)
-		var tlsOptions = TLSOptions.client(cert)
-		error = peer.create_client("wss://" + address + ":" + str(PORT), tlsOptions)
+		var tlsOptions = TLSOptions.client()
+		error = peer.create_client("wss://" + address , tlsOptions)
 	else:
 		error = peer.create_client("ws://" + address + ":" + str(PORT))
 	if error:
