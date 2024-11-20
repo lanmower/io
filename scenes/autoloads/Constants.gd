@@ -1,7 +1,7 @@
 extends Node
 
 #Multiplayer
-const SERVER_IP := "localhost"
+const SERVER_IP := "code.lan.247420.xyz"
 const PORT := 3131
 const USE_SSL := false # put certs in assets/certs, a free let's encrypt one works for itch.io
 const TRUSTED_CHAIN_PATH := ""
