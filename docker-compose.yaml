@@ -23,7 +23,3 @@ services:
       mkdir -v -p build/linux &&
       godot --headless --verbose --export-release 'Linux/X11' /exported/linux/${EXPORT_NAME}.x86_64
       "
-
-# Optional: Define logging settings
-  logging:
-    driver: "json-file"
