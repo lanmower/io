@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  godot-ci:
+    image: barichello/godot-ci:4.3  # Use the specified Godot version
+    container_name: godot-ci
+    restart: unless-stopped
+    volumes:
+      - ./exported:/exported            # Directory to store exported files
+    environment:
+      GODOT_VERSION: "4.3"
+      EXPORT_NAME: "io"
+      PROJECT_PATH: "./"
+    working_dir: /project  # Sets the working directory for the container
+
+    command: >
+      bash -c "
+      # Setup Godot export templates
+      mkdir -v -p ~/.local/share/godot/export_templates/ &&
+      mv /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable &&
+
+      # Build for Linux
+      mkdir -v -p build/linux &&
+      godot --headless --verbose --export-release 'Linux/X11' /exported/linux/${EXPORT_NAME}.x86_64
+      "
+
+# Optional: Define logging settings
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "10m"
+      max-file: "3"
