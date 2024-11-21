@@ -21,5 +21,5 @@ services:
 
       # Build for Linux
       mkdir -v -p build/linux &&
-      godot --headless --verbose --export-release 'Linux/X11' /exported/linux/${EXPORT_NAME}.arm64
+      godot --headless
       "
