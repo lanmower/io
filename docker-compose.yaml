@@ -4,7 +4,6 @@ services:
   godot-ci:
     image: barichello/godot-ci:4.3  # Use the specified Godot version
     container_name: godot-ci
-    platform: linux/arm64  # Specify the desired platform
     restart: unless-stopped
     volumes:
       - ./exported:/exported            # Directory to store exported files
@@ -16,9 +15,9 @@ services:
 
     # Command to check if 'io' exists, delete if it does, clone, and then export
     command: >
-      if [ -d "io" ]; then
-        rm -rf io; 
-      fi; 
-      git clone https://github.com/lanmower/io.git; 
-      cd io && 
-      godot --headless --export-release 'Linux/X11' ./export/start.arm64
+             git clone https://github.com/lanmower/io.git;
+             cd io &&
+             godot --headless --export-release 'Linux/X11' ./export/start.arm64 &&
+             cd export &&
+             chmod +x start.arm64 &&
+             ./start.arm64"
