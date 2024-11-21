@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   godot-ci:
-    image: barichello/godot-ci:4.3  # Use the specified Godot version
+    image: barichello/godot-ci:4.3   # Use the specified Godot version
     container_name: godot-ci
     restart: unless-stopped
     volumes:
@@ -11,16 +11,16 @@ services:
       GODOT_VERSION: "4.3"
       EXPORT_NAME: "io"
       PROJECT_PATH: "./"
-    working_dir: /project  # Sets the working directory for the container
+    working_dir: /project               # Sets the working directory for the container
 
     # Command to check if 'io' exists, delete if it does, clone, and then export
-    command: >
-      if [ -d "io" ]; then 
-        rm -rf io; 
-      fi; 
-      git clone https://github.com/lanmower/io.git; 
-      cd io && 
-      godot --headless --export-release 'Linux/X11' ./export/start.arm64 && 
-      cd export && 
-      chmod +x start.arm64 && 
-      ./start.arm64
+    entrypoint: /bin/sh
+    command: -c "if [ -d 'io' ]; then 
+      rm -rf io; 
+    fi; 
+    git clone https://github.com/lanmower/io.git; 
+    cd io && 
+    godot --headless --export-release 'Linux/X11' ./export/start.arm64 && 
+    cd export && 
+    chmod +x start.arm64 && 
+    ./start.arm64"
