@@ -13,6 +13,12 @@ services:
       PROJECT_PATH: "./"
     working_dir: /project  # Sets the working directory for the container
 
-    # Command to execute git clone and then start godot
+    # Command to check if 'io' exists, delete if it does, clone, and then export
     command: >
-      rm -r io; sh -c "git clone https://github.com/lanmower/io.git && cd io && godot --headless --export-release 'Linux/X11' ./export/start.arm64 && cd export && chmod +x start.arm64 && ./start.arm64"
+      sh -c "if [ -d io ]; then rm -r io; fi &&
+             git clone https://github.com/lanmower/io.git &&
+             cd io &&
+             godot --headless --export-release 'Linux/X11' ./export/start.arm64 &&
+             cd export &&
+             chmod +x start.arm64 &&
+             ./start.arm64"
