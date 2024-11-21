@@ -15,4 +15,4 @@ services:
 
     # Command to execute git clone and then start godot
     command: >
-      sh -c "git clone https://github.com/lanmower/io.git . && cd io && godot --headless"
+      sh -c "git clone https://github.com/lanmower/io.git && cd io && godot --headless"
