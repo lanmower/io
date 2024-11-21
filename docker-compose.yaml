@@ -13,4 +13,6 @@ services:
       PROJECT_PATH: "./"
     working_dir: /project  # Sets the working directory for the container
 
-    command: godot --headless
+    # Command to execute git clone and then start godot
+    command: >
+      sh -c "git clone https://github.com/lanmower/io.git . && godot --headless"
