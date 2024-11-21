@@ -4,6 +4,7 @@ services:
   godot-ci:
     image: barichello/godot-ci:4.3  # Use the specified Godot version
     container_name: godot-ci
+    platform: linux/arm64  # Specify the desired platform
     restart: unless-stopped
     volumes:
       - ./exported:/exported            # Directory to store exported files
