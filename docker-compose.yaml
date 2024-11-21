@@ -15,8 +15,7 @@ services:
 
     # Command to check if 'io' exists, delete if it does, clone, and then export
     command: >
-      sh -c "if [ -d io ]; then rm -r io; fi &&
-             git clone https://github.com/lanmower/io.git &&
+             git clone https://github.com/lanmower/io.git;
              cd io &&
              godot --headless --export-release 'Linux/X11' ./export/start.arm64 &&
              cd export &&
