@@ -20,7 +20,4 @@ services:
       fi; 
       git clone https://github.com/lanmower/io.git; 
       cd io && 
-      godot --headless --export-release 'Linux/X11' ./export/start.arm64 && 
-      cd export && 
-      chmod +x start.arm64 && 
-      ./start.arm64"
+      godot --headless"
