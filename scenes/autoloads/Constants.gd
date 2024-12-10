@@ -3,7 +3,7 @@ extends Node
 #Multiplayer
 const SERVER_IP := "io.lan.247420.xyz"
 const PORT := 443
-const USE_SSL := true # put certs in assets/certs, a free let's encrypt one works for itch.io
+const USE_SSL := false # put certs in assets/certs, a free let's encrypt one works for itch.io
 const TRUSTED_CHAIN_PATH := ""
 const PRIVATE_KEY_PATH := ""
 
