@@ -12,7 +12,7 @@ services:
       EXPORT_NAME: "io"
       PROJECT_PATH: "./"
     working_dir: /project
-#    platform: linux/amd64  # Specify the platform
+    platform: linux/arm64  # Specify the platform
 
     command: >
       sh -c "if [ -d 'io' ]; then 
