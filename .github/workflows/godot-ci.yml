@@ -1,6 +1,5 @@
-name: "godot-ci export"
+name: godot-ci export
 on: push
-
 permissions:
   contents: write
   releases: write
@@ -21,21 +20,23 @@ jobs:
         uses: actions/checkout@v4
         with:
           lfs: true
+      
       - name: Setup
         run: |
           mkdir -p ~/.local/share/godot/export_templates/
           mv /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+      
       - name: ARM64 Build
         run: |
           mkdir -p build/arm64
           EXPORT_DIR="$(readlink -f build)"
           cd $PROJECT_PATH
           godot --headless --verbose --export-release "Linux/ARM64" "$EXPORT_DIR/arm64/${{ env.EXPORT_NAME }}.arm64"
-
+      
       - name: Create a Short SHA Tag
         id: create_tag
         run: echo "short_sha=$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_ENV
-
+      
       - name: Check if Release Exists
         id: check_release
         run: |
@@ -46,24 +47,26 @@ jobs:
             echo "Release does not exist"
             echo "release_exists=false" >> $GITHUB_ENV
           fi
-
+      
       - name: Create Release
         id: create_release
-        if: env.release_exists == 'false' # Only create if it does not exist
+        if: env.release_exists == 'false'
         uses: actions/create-release@v1
         with:
-          tag_name: "release-${{ env.short_sha }}" # Short SHA-based tag
-          release_name: "Release ${{ env.short_sha }}" # Custom release name
+          tag_name: "release-${{ env.short_sha }}"
+          release_name: "Release ${{ env.short_sha }}"
           draft: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+      
       - name: Upload Release Asset
-        if: steps.create_release.outputs.upload_url != '' # Proceed only if a release was created
+        if: steps.create_release.outputs.upload_url != ''
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: build/arm64/${{ env.EXPORT_NAME }}.arm64 # Ensure this path is correct
+          asset_path: build/arm64/${{ env.EXPORT_NAME }}.arm64
           asset_name: "${{ env.EXPORT_NAME }}.arm64"
           asset_content_type: "application/octet-stream"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
