@@ -62,10 +62,14 @@ jobs:
           cd $PROJECT_PATH
           godot --headless --verbose --export-release "Linux/ARM64" "$EXPORT_DIR/arm64/$EXPORT_NAME.arm64"
 
+      - name: Create a Short SHA Tag
+        id: create_tag
+        run: echo "short_sha=$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_ENV
+
       - name: Check if Release Exists
         id: check_release
         run: |
-          if git tag -l | grep -q "${{ github.sha }}"; then
+          if git tag -l | grep -q "${{ env.short_sha }}"; then
             echo "Release already exists"
             echo "::set-output name=release_exists::true"
           else
@@ -78,8 +82,8 @@ jobs:
         if: steps.check_release.outputs.release_exists == 'false' # Only create if it does not exist
         uses: actions/create-release@v1
         with:
-          tag_name: ${{ github.sha }} # Use commit SHA for unique tag
-          release_name: "Release ${{ github.sha }}" # Optionally use the commit SHA in the release name
+          tag_name: "release-${{ env.short_sha }}" # Short SHA-based tag
+          release_name: "Release ${{ env.short_sha }}" # Custom release name with short SHA
           draft: false
           prerelease: false
         env:
