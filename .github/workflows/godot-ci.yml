@@ -61,17 +61,32 @@ jobs:
           EXPORT_DIR="$(readlink -f build)"
           cd $PROJECT_PATH
           godot --headless --verbose --export-release "Linux/ARM64" "$EXPORT_DIR/arm64/$EXPORT_NAME.arm64"
+
+      - name: Check if Release Exists
+        id: check_release
+        run: |
+          if git tag -l | grep -q "${{ github.sha }}"; then
+            echo "Release already exists"
+            echo "::set-output name=release_exists::true"
+          else
+            echo "Release does not exist"
+            echo "::set-output name=release_exists::false"
+          fi
+
       - name: Create Release
         id: create_release
+        if: steps.check_release.outputs.release_exists == 'false' # Only create if it does not exist
         uses: actions/create-release@v1
         with:
-          tag_name: v1.0 # Set this to your desired tag version
-          release_name: Release v1.0 # Replace with your desired release name
+          tag_name: ${{ github.sha }} # Use commit SHA for unique tag
+          release_name: "Release ${{ github.sha }}" # Optionally use the commit SHA in the release name
           draft: false
           prerelease: false
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # GitHub automatically provides a token by default
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Upload Release Asset
+        if: steps.create_release.outputs.upload_url != '' # Proceed to upload only if a release is created
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
