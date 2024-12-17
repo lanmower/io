@@ -2,7 +2,7 @@ name: godot-ci export
 on: push
 permissions:
   contents: write
-  releases: write
+  pull-requests: write
 
 env:
   GODOT_VERSION: 4.3
