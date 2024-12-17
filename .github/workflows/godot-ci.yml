@@ -90,13 +90,13 @@ jobs:
           draft: false
           prerelease: false
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Ensure the correct usage of GITHUB_TOKEN
 
       - name: Upload Release Asset
         if: steps.create_release.outputs.upload_url != '' # Proceed to upload only if a release is created
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: build/arm64/${{ env.EXPORT_NAME }}.arm64 # Use correct syntax for the environment variable
+          asset_path: build/arm64/${{ env.EXPORT_NAME }}.arm64 # Ensure this path is correct
           asset_name: "${{ env.EXPORT_NAME }}.arm64"
           asset_content_type: "application/octet-stream"
