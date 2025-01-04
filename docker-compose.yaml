@@ -20,9 +20,9 @@ services:
       sh -c "if [ -d 'io' ]; then 
         rm -rf io; 
       fi; 
-      git clone https://github.com/lanmower/io.git; 
+      git clone https://github.com/lanmower/io.git &&
       cd io && 
-      mkdir -p build
-      godot --headless --verbose --export-release "Linux/ARM64" "build/io.arm64
-      cd build
+      mkdir -p build &&
+      godot --headless --verbose --export-release "Linux/ARM64" "build/io.arm64 &&
+      cd build &&
       ./io.arm64"
