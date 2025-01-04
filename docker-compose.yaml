@@ -16,4 +16,5 @@ services:
 
     command: >
       godot --headless --export-release Linux/ARM64 export/io.arm64 &&
-      pause
+      cd export &&
+      godot --headless
