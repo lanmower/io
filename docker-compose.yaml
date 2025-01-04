@@ -11,8 +11,7 @@ services:
       GODOT_VERSION: "4.3"
       EXPORT_NAME: "io"
       PROJECT_PATH: "./"
-    working_dir: /project
+    working_dir: /project/export
     platform: linux/arm64
 
-    command: >
-      sh -c "godot --headless"
+    command: io.arm64
