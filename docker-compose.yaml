@@ -23,6 +23,4 @@ services:
       git clone https://github.com/lanmower/io.git &&
       cd io &&
       mkdir build &&
-      godot --headless --verbose --export-release Linux/ARM64 build/io.arm64
-      cd build
-      ./io.arm64 --headless"
+      godot --headless --verbose"
