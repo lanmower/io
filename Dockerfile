@@ -50,3 +50,4 @@ RUN echo '[gd_resource type="EditorSettings" format=3]' > ~/.config/godot/editor
 RUN godot -v -e --quit --headless
 WORKDIR /project
 COPY . .
+RUN godot --headless --export-release Linux/ARM64 export/io.arm64
