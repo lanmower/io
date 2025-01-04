@@ -22,4 +22,4 @@ services:
       fi; 
       git clone https://github.com/lanmower/io.git; 
       cd io && 
-      godot --headless
+      godot --headless"
