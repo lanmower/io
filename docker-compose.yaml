@@ -18,5 +18,4 @@ services:
 
     command: >
       sh -c "ls && 
-      cd build &&
-      ./io.arm64"
+      godot --headless"
