@@ -52,4 +52,3 @@ COPY . .
 RUN mkdir -p build
 RUN cd build
 RUN godot --headless --verbose --export-release "Linux/ARM64" "build/io.arm64"
-RUN build.sh
