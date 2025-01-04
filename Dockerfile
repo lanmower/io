@@ -48,4 +48,5 @@ RUN echo '[gd_resource type="EditorSettings" format=3]' > ~/.config/godot/editor
 
 # Run Godot to confirm successful installation
 RUN godot -v -e --quit --headless
+WORKDIR /project
 COPY . .
