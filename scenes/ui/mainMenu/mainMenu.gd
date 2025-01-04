@@ -1,7 +1,7 @@
 extends Control
 
 func _ready():
-	if OS.has_feature("Server"):
+	if DisplayServer.get_name() == "headless":
 		Multihelper.create_game()
 
 func server_offline():
