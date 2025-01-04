@@ -49,6 +49,3 @@ RUN echo '[gd_resource type="EditorSettings" format=3]' > ~/.config/godot/editor
 # Run Godot to confirm successful installation
 RUN godot -v -e --quit --headless
 COPY . .
-RUN mkdir -p build
-RUN cd build
-RUN godot --headless --verbose --export-release "Linux/ARM64" "build/io.arm64"
