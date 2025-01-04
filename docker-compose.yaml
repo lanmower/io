@@ -17,5 +17,6 @@ services:
     platform: linux/arm64
 
     command: >
-      sh -c "cd build &&
+      sh -c "ls && 
+      cd build &&
       ./io.arm64"
