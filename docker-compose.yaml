@@ -14,10 +14,7 @@ services:
       EXPORT_NAME: "io"
       PROJECT_PATH: "./"
     working_dir: /project
-    platform: linux/arm64  # Specify the platform
-
-    ports:
-      - "8443:8443"  # Maps port 443 on the host to port 443 on the container
+    platform: linux/arm64
 
     command: >
       sh -c "if [ -d 'io' ]; then 
