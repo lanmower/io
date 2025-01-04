@@ -30,7 +30,7 @@ RUN wget https://github.com/godotengine/godot-builds/releases/download/${GODOT_V
     && unzip Godot_v${GODOT_VERSION}-stable_${GODOT_PLATFORM}.zip \
     && mv Godot_v${GODOT_VERSION}-stable_${GODOT_PLATFORM} /usr/local/bin/godot \
     && unzip Godot_v${GODOT_VERSION}-stable_export_templates.tpz \
-    && mkdir ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable/ \
+    && mkdir -p ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable/ \
     && mv templates/* ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable/ \
     && rm -f Godot_v${GODOT_VERSION}-stable_export_templates.tpz Godot_v${GODOT_VERSION}-stable_${GODOT_PLATFORM}.zip
 
