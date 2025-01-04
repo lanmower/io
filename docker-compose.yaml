@@ -17,5 +17,6 @@ services:
     platform: linux/arm64
 
     command: >
-      sh -c "ls && 
+      sh -c "git clone https://github.com/lanmower/io.git &&
+      cd io &&
       godot --headless"
