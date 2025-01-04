@@ -24,7 +24,7 @@ ARG GODOT_VERSION="4.3"
 ARG GODOT_PLATFORM="linux.arm64" # Specify the platform for ARM
 
 # Download Godot
-
+RUN mkdir -p /root/.config/godot/
 RUN wget https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_${GODOT_PLATFORM}.zip \
     && wget https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz \
     && unzip Godot_v${GODOT_VERSION}-stable_${GODOT_PLATFORM}.zip \
