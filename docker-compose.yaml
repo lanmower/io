@@ -19,5 +19,5 @@ services:
     command: >
       sh -c "git clone https://github.com/lanmower/io.git &&
       cd io &&
-      godot --headless --verbose --export-release "Linux/ARM64" "io.arm64
+      godot --headless --verbose --export-release Linux/ARM64 io.arm64
       ./io.arm64 --headless"
