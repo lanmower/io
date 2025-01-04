@@ -17,10 +17,6 @@ services:
     platform: linux/arm64
 
     command: >
-      sh -c "if [ -d 'io' ]; then 
-        rm -rf io; 
-      fi;
-      git clone https://github.com/lanmower/io.git &&
       cd io &&
       mkdir build &&
       godot --headless --verbose"
