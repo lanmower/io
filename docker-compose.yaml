@@ -17,7 +17,7 @@ services:
     platform: linux/arm64  # Specify the platform
 
     ports:
-      - "443:443"  # Maps port 443 on the host to port 443 on the container
+      - "8443:8443"  # Maps port 443 on the host to port 443 on the container
 
     command: >
       sh -c "if [ -d 'io' ]; then 
