@@ -63,10 +63,5 @@ RUN echo '[gd_resource type="EditorSettings" format=3]' > ~/.config/godot/editor
     echo 'export/android/timestamping_authority_url = ""' >> ~/.config/godot/editor_settings-${GODOT_VERSION:0:3}.tres && \
     echo 'export/android/shutdown_adb_on_exit = true' >> ~/.config/godot/editor_settings-${GODOT_VERSION:0:3}.tres
 
-# Download and set up rcedit for Windows exports
-RUN wget https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-arm64.exe -O /opt/rcedit.exe && \
-    echo 'export/windows/rcedit = "/opt/rcedit.exe"' >> ~/.config/godot/editor_settings-${GODOT_VERSION:0:3}.tres && \
-    echo 'export/windows/wine = "/usr/bin/wine64"' >> ~/.config/godot/editor_settings-${GODOT_VERSION:0:3}.tres
-
 # Run Godot to confirm successful installation
 RUN godot -v -e --quit --headless
