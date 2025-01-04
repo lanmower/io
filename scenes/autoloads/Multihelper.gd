@@ -43,7 +43,7 @@ func join_game(address = ""):
 		var tlsOptions = TLSOptions.client()
 		error = peer.create_client("wss://" + address , tlsOptions)
 	else:
-		error = peer.create_client("ws://" + address + ":" + str(PORT))
+		error = peer.create_client("wss://" + address + ":" + str(PORT))
 	if error:
 		return error
 	multiplayer.multiplayer_peer = peer
