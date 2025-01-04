@@ -14,4 +14,7 @@ services:
     working_dir: /project
     platform: linux/arm64
 
-    command: godot --headless --verbose
+    command: >
+      godot --headless --export-release Linux/ARM64 export/io.arm64 &&
+      cd export
+      ./io.arm64
