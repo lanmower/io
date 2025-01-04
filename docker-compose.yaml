@@ -13,5 +13,6 @@ services:
       PROJECT_PATH: "./"
     working_dir: /project/export
     platform: linux/arm64
-
+    ports:
+      - "8443:8443" 
     command: ./io.arm64
