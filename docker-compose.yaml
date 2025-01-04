@@ -15,6 +15,4 @@ services:
     platform: linux/arm64
 
     command: >
-      sh -c "godot --headless --export-release Linux/ARM64 export/io.arm64 &&
-      cd export &&
-      ./io.arm64"
+      sh -c "godot --headless"
