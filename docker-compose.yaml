@@ -2,7 +2,9 @@ version: '3.8'
 
 services:
   godot-ci:
-    image: barichello/godot-ci:4.3
+    build:
+      context: .  # Change this as needed to point to your Dockerfile directory
+      dockerfile: Dockerfile  # Point to the Dockerfile
     container_name: godot-ci
     restart: unless-stopped
     volumes:
