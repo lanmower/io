@@ -14,4 +14,4 @@ services:
     working_dir: /project/export
     platform: linux/arm64
 
-    command: io.arm64
+    command: ./io.arm64
