@@ -29,11 +29,11 @@ func generate_terrain():
 			var pos = Vector2i(x, y)
 			if noise_value > 0.03:
 				tile_coord = grassAtlasCoords.pick_random()
-				tile_map.set_cell(0, pos, tileset_source, tile_coord)
+				tile_map.set_cell(pos, tileset_source, tile_coord)
 				walkable_tiles.append(pos)
 			else:
 				tile_coord = waterCoors.pick_random()
-				tile_map.set_cell(0, pos, tileset_source, tile_coord)
+				tile_map.set_cell(pos, tileset_source, tile_coord)
 	
 	connect_islands()
 
@@ -93,17 +93,37 @@ func connect_two_islands(island1: Array, island2: Array) -> void:
 				point1 = p1
 				point2 = p2
 	
-	# Create a path between the closest points
+	# Create expanded mouths at both ends
+	var mouth_radius = 2
+	for dx in range(-mouth_radius, mouth_radius + 1):
+		for dy in range(-mouth_radius, mouth_radius + 1):
+			if dx * dx + dy * dy <= mouth_radius * mouth_radius:  # Circular mouth
+				var mouth1 = Vector2i(point1.x + dx, point1.y + dy)
+				var mouth2 = Vector2i(point2.x + dx, point2.y + dy)
+				
+				if not walkable_tiles.has(mouth1):
+					tile_map.set_cell(mouth1, tileset_source, grassAtlasCoords.pick_random())
+					walkable_tiles.append(mouth1)
+				if not walkable_tiles.has(mouth2):
+					tile_map.set_cell(mouth2, tileset_source, grassAtlasCoords.pick_random())
+					walkable_tiles.append(mouth2)
+	
+	# Create a path between the closest points with some variation
 	var current = point1
 	while current != point2:
 		var dx = sign(point2.x - current.x)
 		var dy = sign(point2.y - current.y)
 		
+		# Add some random width to the path
+		for width_x in range(-1, 2):
+			for width_y in range(-1, 2):
+				if randf() < 0.7:  # 70% chance to place additional tiles
+					var path_point = Vector2i(current.x + width_x, current.y + width_y)
+					if not walkable_tiles.has(path_point):
+						tile_map.set_cell(path_point, tileset_source, grassAtlasCoords.pick_random())
+						walkable_tiles.append(path_point)
+		
 		if dx != 0:
 			current = Vector2i(current.x + dx, current.y)
 		elif dy != 0:
 			current = Vector2i(current.x, current.y + dy)
-		
-		if not walkable_tiles.has(current):
-			tile_map.set_cell(0, current, tileset_source, grassAtlasCoords[0])
-			walkable_tiles.append(current)
