@@ -9,7 +9,7 @@ const TRUSTED_CHAIN_PATH := ""
 const PRIVATE_KEY_PATH := ""
 
 #Map
-const MAP_SIZE := Vector2i(64,64) # see map.gd for tileset specific constants
+const MAP_SIZE := Vector2i(128,128) # see map.gd for tileset specific constants
 const MAX_OBJECTS := 30
 const MAX_ENEMIES_PER_PLAYER := 2 # see main.gd for more object and enemy spawner constants
 
