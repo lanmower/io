@@ -35,7 +35,7 @@ var equippedItem : String:
 		$PlayerUi.setHPBarRatio(hp/maxHP)
 		if hp <= 0:
 			die()
-@export var speed := 200
+@export var speed := 300
 var spawnsProjectile := ""
 @export var attackDamage := 10:
 	get:
