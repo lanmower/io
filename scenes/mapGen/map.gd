@@ -29,11 +29,11 @@ func generate_terrain():
 			var pos = Vector2i(x, y)
 			if noise_value > 0.03:
 				tile_coord = grassAtlasCoords.pick_random()
-				tile_map.set_cell(tileset_source, pos, 0, tile_coord)
+				tile_map.set_cell(0, pos, tileset_source, tile_coord)
 				walkable_tiles.append(pos)
 			else:
 				tile_coord = waterCoors.pick_random()
-				tile_map.set_cell(tileset_source, pos, 0, tile_coord)
+				tile_map.set_cell(0, pos, tileset_source, tile_coord)
 	
 	connect_islands()
 
@@ -105,5 +105,5 @@ func connect_two_islands(island1: Array, island2: Array) -> void:
 			current = Vector2i(current.x, current.y + dy)
 		
 		if not walkable_tiles.has(current):
-			tile_map.set_cell(tileset_source, current, 0, grassAtlasCoords[0])
+			tile_map.set_cell(0, current, tileset_source, grassAtlasCoords[0])
 			walkable_tiles.append(current)
