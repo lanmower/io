@@ -1,7 +1,7 @@
 [gd_scene load_steps=4 format=3 uid="uid://cv01pg7l0b1q8"]
 
 [ext_resource type="Script" path="res://scenes/character/equipments/torch.gd" id="1_6vgs8"]
-[ext_resource type="Texture2D" uid="uid://fkefgfbw1bry" path="res://assets/daynight/light.webp" id="1_iqrwj"]
+[ext_resource type="Texture2D" uid="uid://5sd35hud5ytk" path="res://assets/daynight/light.webp" id="1_iqrwj"]
 
 [sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_qamgp"]
 properties/0/path = NodePath(".:data")

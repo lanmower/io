@@ -39,12 +39,15 @@ func join_game(address = ""):
 	multiplayer.multiplayer_peer = null
 	var peer = WebSocketMultiplayerPeer.new()
 	var error
-	if Constants.USE_SSL:
-		var tlsOptions = TLSOptions.client()
-		error = peer.create_client("wss://" + address , tlsOptions)
+	if OS.has_feature("editor"):
+		error = peer.create_client("ws://" + address + ":8443")
 	else:
-		var tlsOptions = TLSOptions.client()
-		error = peer.create_client("wss://" + address , tlsOptions)
+		if Constants.USE_SSL:
+			var tlsOptions = TLSOptions.client()
+			error = peer.create_client("wss://" + address, tlsOptions)
+		else:
+			var tlsOptions = TLSOptions.client()
+			error = peer.create_client("wss://" + address, tlsOptions)
 	if error:
 		return error
 	multiplayer.multiplayer_peer = peer
