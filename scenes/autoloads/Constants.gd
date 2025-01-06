@@ -18,5 +18,13 @@ const MAX_INVENTORY_SLOTS := 9
 const OBJECT_SCORE_GAIN := 1
 const MOB_SCORE_GAIN := 2
 const PK_SCORE_GAIN := 4
+
+# Player stamina settings
+const MAX_STAMINA = 100.0
+const STAMINA_DRAIN_RATE = 25.0  # Stamina lost per second while running
+const STAMINA_REGEN_RATE = 15.0  # Stamina regained per second while not running
+const MIN_STAMINA_TO_RUN = 10.0  # Minimum stamina needed to start running
+const RUN_SPEED_MULTIPLIER = 1.6  # How much faster running is than walking
+
 # more player related consts are in player.gd
 # Item, object and equipment data is in "Items" autoload.

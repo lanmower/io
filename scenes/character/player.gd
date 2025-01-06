@@ -35,7 +35,11 @@ var equippedItem : String:
 		$PlayerUi.setHPBarRatio(hp/maxHP)
 		if hp <= 0:
 			die()
-@export var speed := 300
+@export var base_speed := 300
+@export var speed := base_speed
+var stamina: float = Constants.MAX_STAMINA
+var is_running: bool = false
+var can_run: bool = true
 var spawnsProjectile := ""
 @export var attackDamage := 10:
 	get:
@@ -86,18 +90,38 @@ func disconnected(id):
 	
 func _process(_delta):
 	if str(multiplayer.get_unique_id()) == name:
-		var vel = Input.get_vector("walkLeft", "walkRight", "walkUp", "walkDown") * speed
+		var base_vel = Input.get_vector("walkLeft", "walkRight", "walkUp", "walkDown")
+		
+		# Handle running
+		if Input.is_action_pressed("run") and can_run and stamina > Constants.MIN_STAMINA_TO_RUN:
+			is_running = true
+			stamina = max(0, stamina - Constants.STAMINA_DRAIN_RATE * _delta)
+			speed = base_speed * Constants.RUN_SPEED_MULTIPLIER
+		else:
+			is_running = false
+			stamina = min(Constants.MAX_STAMINA, stamina + Constants.STAMINA_REGEN_RATE * _delta)
+			speed = base_speed
+			
+		# Prevent running if stamina is too low
+		if stamina <= Constants.MIN_STAMINA_TO_RUN:
+			can_run = false
+		elif stamina >= Constants.MIN_STAMINA_TO_RUN * 2:
+			can_run = true
+			
+		var vel = base_vel * speed
 		var mouse_position = get_global_mouse_position()
 		var direction_to_mouse = mouse_position - global_position
 		var angle = direction_to_mouse.angle()
 		var doingAction = Input.is_action_pressed("leftClickAction")
+		
 		#Apply local movement
 		moveProcess(vel, angle, doingAction)
 		#Send input to server for replication
 		var inputData = {
 			"vel": vel,
 			"angle": angle,
-			"doingAction": doingAction
+			"doingAction": doingAction,
+			"is_running": is_running
 		}
 		sendInputstwo.rpc_id(1, inputData)
 		sendPos.rpc(position)
