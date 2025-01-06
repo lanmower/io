@@ -22,7 +22,7 @@ const PK_SCORE_GAIN := 4
 # Player stamina settings
 const MAX_STAMINA = 100.0
 const STAMINA_DRAIN_RATE = 25.0  # Stamina lost per second while running
-const STAMINA_REGEN_RATE = 15.0  # Stamina regained per second while not running
+const STAMINA_REGEN_RATE = 7.5  # Stamina regained per second while not running
 const MIN_STAMINA_TO_RUN = 10.0  # Minimum stamina needed to start running
 const RUN_SPEED_MULTIPLIER = 1.6  # How much faster running is than walking
 
