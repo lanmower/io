@@ -22,12 +22,30 @@ func generateMap():
 
 func generate_terrain():
 	walkable_tiles.clear()
+	var border_width = 8  # Width of ocean border
+	var border_falloff = 4  # How gradually the border blends
+	
 	for y in range(map_height):
 		for x in range(map_width):
 			var noise_value = noise.get_noise_2d(x, y)
 			var tile_coord = Vector2i()
 			var pos = Vector2i(x, y)
-			if noise_value > 0.03:
+			
+			# Calculate distance from edges
+			var dist_from_edge = min(
+				min(x, map_width - x),
+				min(y, map_height - y)
+			)
+			
+			# Adjust noise threshold based on distance from edge
+			var threshold = 0.03  # Base threshold
+			if dist_from_edge < border_width:
+				threshold = 1.0  # Guarantee ocean
+			elif dist_from_edge < border_width + border_falloff:
+				var t = float(dist_from_edge - border_width) / border_falloff
+				threshold = lerp(1.0, 0.03, t)  # Gradual transition
+			
+			if noise_value > threshold:
 				tile_coord = grassAtlasCoords.pick_random()
 				tile_map.set_cell(pos, tileset_source, tile_coord)
 				walkable_tiles.append(pos)
