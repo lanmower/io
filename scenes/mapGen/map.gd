@@ -53,10 +53,10 @@ func generate_terrain():
 			if noise_value > threshold:
 				terrain_data[pos] = "grass"
 				walkable_tiles.append(pos)
-				tile_map.set_cell(pos, tileset_source, grassAtlasCoords.pick_random())  # Set grass immediately
+				tile_map.set_cell(0, pos, tileset_source, grassAtlasCoords.pick_random())  # Layer 0
 			else:
 				terrain_data[pos] = "water"
-				tile_map.set_cell(pos, tileset_source, waterCoors.pick_random())  # Set water immediately
+				tile_map.set_cell(0, pos, tileset_source, waterCoors.pick_random())  # Layer 0
 	
 	# Generate beaches and set tiles
 	generate_beaches(terrain_data, noise_data)
@@ -98,12 +98,9 @@ func generate_beaches(terrain_data: Dictionary, noise_data: Dictionary) -> void:
 					if has_water_or_outer_sand:
 						terrain_data[pos] = "sand"
 						sand_positions.append(pos)
-						tile_map.set_cell(pos, tileset_source, sandCoords.pick_random())
-	
-	# Add all sand positions to walkable_tiles
-	for pos in sand_positions:
-		if not walkable_tiles.has(pos):
-			walkable_tiles.append(pos)
+						tile_map.set_cell(0, pos, tileset_source, sandCoords.pick_random())  # Layer 0
+						if not walkable_tiles.has(pos):
+							walkable_tiles.append(pos)
 
 func connect_islands():
 	var islands = find_islands()
@@ -193,7 +190,7 @@ func connect_two_islands(island1: Array, island2: Array) -> void:
 	for y in range(map_height):
 		for x in range(map_width):
 			var pos = Vector2i(x, y)
-			var cell_data = tile_map.get_cell_atlas_coords(pos)
+			var cell_data = tile_map.get_cell_atlas_coords(0, pos)  # Layer 0
 			terrain_data[pos] = "water"
 			noise_data[pos] = noise.get_noise_2d(x * 0.1, y * 0.1)
 			
@@ -225,6 +222,7 @@ func connect_two_islands(island1: Array, island2: Array) -> void:
 					terrain_data[check_point] = "grass"
 					if not walkable_tiles.has(check_point):
 						walkable_tiles.append(check_point)
+					tile_map.set_cell(0, check_point, tileset_source, grassAtlasCoords.pick_random())  # Layer 0
 	
 	# Generate beaches for the new land
 	generate_beaches(terrain_data, noise_data)
