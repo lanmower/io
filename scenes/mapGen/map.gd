@@ -43,12 +43,12 @@ func generate_terrain():
 			)
 			
 			# Adjust noise threshold based on distance from edge
-			var threshold = 0.03  # Base threshold
+			var threshold = -0.1  # Lower base threshold to generate more land
 			if dist_from_edge < border_width:
 				threshold = 1.0  # Guarantee ocean
 			elif dist_from_edge < border_width + border_falloff:
 				var t = float(dist_from_edge - border_width) / border_falloff
-				threshold = lerp(1.0, 0.03, t)  # Gradual transition
+				threshold = lerp(1.0, -0.1, t)  # Gradual transition
 			
 			if noise_value > threshold:
 				terrain_data[pos] = "grass"
@@ -66,8 +66,7 @@ func generate_terrain():
 
 func generate_beaches(terrain_data: Dictionary, noise_data: Dictionary) -> void:
 	# Add sand borders with multiple layers
-	var beach_width = 4  # Increased beach width further
-	var sand_positions = []  # Track sand positions to add to walkable_tiles at the end
+	var beach_width = 2  # Reduced beach width
 	
 	for layer in range(beach_width):
 		for y in range(map_height):
@@ -87,7 +86,7 @@ func generate_beaches(terrain_data: Dictionary, noise_data: Dictionary) -> void:
 										if check_type == "water" or (layer > 0 and check_type == "sand"):
 											# Use noise value to create more natural transitions
 											var noise_diff = abs(noise_data[pos] - noise_data.get(check_pos, 0))
-											if noise_diff < 0.15 + (0.08 * layer):  # Increased thresholds for wider beaches
+											if noise_diff < 0.1 + (0.05 * layer):  # Reduced threshold for less sand
 												has_water_or_outer_sand = true
 												break
 							if has_water_or_outer_sand:
@@ -97,8 +96,8 @@ func generate_beaches(terrain_data: Dictionary, noise_data: Dictionary) -> void:
 					
 					if has_water_or_outer_sand:
 						terrain_data[pos] = "sand"
-						sand_positions.append(pos)
 						tile_map.set_cell(pos, tileset_source, sandCoords.pick_random(), 0)  # Set sand
+						# Keep this position walkable since it was grass before
 						if not walkable_tiles.has(pos):
 							walkable_tiles.append(pos)
 
@@ -190,7 +189,7 @@ func connect_two_islands(island1: Array, island2: Array) -> void:
 	for y in range(map_height):
 		for x in range(map_width):
 			var pos = Vector2i(x, y)
-			var cell_data = tile_map.get_cell_atlas_coords(0, pos)  # Layer 0
+			var cell_data = tile_map.get_cell_atlas_coords(pos)  # Remove layer parameter
 			terrain_data[pos] = "water"
 			noise_data[pos] = noise.get_noise_2d(x * 0.1, y * 0.1)
 			

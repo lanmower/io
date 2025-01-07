@@ -6,6 +6,7 @@ var isHost = false
 var mapSeed = randi()
 var map: Node2D
 var main: Node2D
+var debug_camera_settings = null
 
 signal player_connected(peer_id)
 signal player_disconnected(peer_id)

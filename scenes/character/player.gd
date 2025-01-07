@@ -70,6 +70,9 @@ func _ready():
 		inventory = get_parent().get_parent().get_node("HUD/Inventory")
 		inventory.player = self
 		$Camera2D.enabled = true
+		# Set up debug camera if debug settings are available
+		if Multihelper.debug_camera_settings != null and Multihelper.debug_camera_settings.has("zoom"):
+			$Camera2D.zoom = Vector2(8, 8)  # Fixed zoom to show the whole map
 	Multihelper.player_disconnected.connect(disconnected)
 
 func visibilityFilter(id):
