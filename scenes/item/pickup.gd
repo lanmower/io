@@ -1,3 +1,4 @@
+# godot 4.3
 extends Area2D
 
 @export var itemId : String:

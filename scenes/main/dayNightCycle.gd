@@ -1,3 +1,4 @@
+# godot 4.3
 extends CanvasModulate
 
 const MINUTES_PER_DAY = 1440.0

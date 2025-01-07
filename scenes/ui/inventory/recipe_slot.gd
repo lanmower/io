@@ -1,3 +1,4 @@
+# godot 4.3
 extends PanelContainer
 
 signal recipeSelected(id)

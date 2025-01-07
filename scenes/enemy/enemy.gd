@@ -1,3 +1,4 @@
+# godot 4.3
 extends CharacterBody2D
 
 var spawner : Node2D

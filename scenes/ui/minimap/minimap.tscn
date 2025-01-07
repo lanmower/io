@@ -15,9 +15,10 @@ grow_vertical = 0
 
 [node name="VBoxContainer" type="VBoxContainer" parent="."]
 layout_mode = 0
-offset_top = -202.0
-offset_right = 200.0
-offset_bottom = 25.0
+offset_left = -18.0
+offset_top = -161.0
+offset_right = 182.0
+offset_bottom = 66.0
 
 [node name="CoordsLabel" type="Label" parent="VBoxContainer"]
 layout_mode = 2
@@ -30,6 +31,8 @@ layout_mode = 2
 [node name="MapDraw" type="Control" parent="VBoxContainer/PanelContainer"]
 layout_mode = 2
 script = ExtResource("1_r4fq1")
+mobs_container_path = NodePath("../../../../../Enemies")
+players_container_path = NodePath("../../../../../Players")
 
 [node name="PointsDraw" type="Control" parent="VBoxContainer/PanelContainer"]
 layout_mode = 2

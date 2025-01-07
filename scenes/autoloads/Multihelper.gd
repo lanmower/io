@@ -1,3 +1,4 @@
+# godot 4.3
 extends Node
 
 var playerScenePath = preload("res://scenes/character/player.tscn")

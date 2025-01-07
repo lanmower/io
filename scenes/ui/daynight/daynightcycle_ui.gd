@@ -1,3 +1,4 @@
+# godot 4.3
 extends Control
 
 @onready var day_label_background: Label = %DayLabelBackground

@@ -1,3 +1,4 @@
+# godot 4.3
 extends StaticBody2D
 
 @export var objectId := "":

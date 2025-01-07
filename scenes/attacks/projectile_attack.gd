@@ -1,3 +1,4 @@
+# godot 4.3
 extends Node2D
 
 signal hitPlayer(body)
