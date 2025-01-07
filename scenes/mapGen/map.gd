@@ -53,10 +53,10 @@ func generate_terrain():
 			if noise_value > threshold:
 				terrain_data[pos] = "grass"
 				walkable_tiles.append(pos)
-				tile_map.set_cell(pos, tileset_source, grassAtlasCoords.pick_random(), Vector2i(0, 0))  # Set grass
+				tile_map.set_cell(pos, tileset_source, grassAtlasCoords.pick_random(), 0)  # Set grass
 			else:
 				terrain_data[pos] = "water"
-				tile_map.set_cell(pos, tileset_source, waterCoors.pick_random(), Vector2i(0, 0))  # Set water
+				tile_map.set_cell(pos, tileset_source, waterCoors.pick_random(), 0)  # Set water
 	
 	# Generate beaches and set tiles
 	generate_beaches(terrain_data, noise_data)
@@ -98,7 +98,7 @@ func generate_beaches(terrain_data: Dictionary, noise_data: Dictionary) -> void:
 					if has_water_or_outer_sand:
 						terrain_data[pos] = "sand"
 						sand_positions.append(pos)
-						tile_map.set_cell(pos, tileset_source, sandCoords.pick_random(), Vector2i(0, 0))  # Set sand
+						tile_map.set_cell(pos, tileset_source, sandCoords.pick_random(), 0)  # Set sand
 						if not walkable_tiles.has(pos):
 							walkable_tiles.append(pos)
 
@@ -222,7 +222,7 @@ func connect_two_islands(island1: Array, island2: Array) -> void:
 					terrain_data[check_point] = "grass"
 					if not walkable_tiles.has(check_point):
 						walkable_tiles.append(check_point)
-					tile_map.set_cell(check_point, tileset_source, grassAtlasCoords.pick_random(), Vector2i(0, 0))  # Set grass
+					tile_map.set_cell(check_point, tileset_source, grassAtlasCoords.pick_random(), 0)  # Set grass
 	
 	# Generate beaches for the new land
 	generate_beaches(terrain_data, noise_data)
