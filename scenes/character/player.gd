@@ -54,7 +54,7 @@ var damageType := "normal":
 			return Items.equips[equippedItem]["damageType"]
 		else:
 			return damageType
-var attackRange := 2.0:
+var attackRange := 3.0:
 	set(value):
 		var clampedVal = clampf(value, 1.0, 5.0)
 		attackRange = clampedVal
