@@ -3,6 +3,7 @@ extends Node2D
 
 var grassAtlasCoords = [Vector2i(0,0),Vector2i(1,0),Vector2i(2,0),Vector2i(3,0),Vector2i(16,0),Vector2i(17,0)]
 var waterCoors = [Vector2i(18,0), Vector2i(19,0)]
+var sandCoords = [Vector2i(4,0), Vector2i(5,0)]
 var noise = FastNoiseLite.new()
 var tileset_source = 1
 # Noise parameters
@@ -26,11 +27,14 @@ func generate_terrain():
 	var border_width = 8  # Width of ocean border
 	var border_falloff = 4  # How gradually the border blends
 	
+	# First pass: Generate basic terrain (grass and water)
+	var terrain_data = {}
+	var noise_data = {}  # Store raw noise values for better transitions
 	for y in range(map_height):
 		for x in range(map_width):
 			var noise_value = noise.get_noise_2d(x, y)
-			var tile_coord = Vector2i()
 			var pos = Vector2i(x, y)
+			noise_data[pos] = noise_value
 			
 			# Calculate distance from edges
 			var dist_from_edge = min(
@@ -47,14 +51,59 @@ func generate_terrain():
 				threshold = lerp(1.0, 0.03, t)  # Gradual transition
 			
 			if noise_value > threshold:
-				tile_coord = grassAtlasCoords.pick_random()
-				tile_map.set_cell(pos, tileset_source, tile_coord)
+				terrain_data[pos] = "grass"
 				walkable_tiles.append(pos)
+				tile_map.set_cell(pos, tileset_source, grassAtlasCoords.pick_random())  # Set grass immediately
 			else:
-				tile_coord = waterCoors.pick_random()
-				tile_map.set_cell(pos, tileset_source, tile_coord)
+				terrain_data[pos] = "water"
+				tile_map.set_cell(pos, tileset_source, waterCoors.pick_random())  # Set water immediately
 	
+	# Generate beaches and set tiles
+	generate_beaches(terrain_data, noise_data)
+	
+	# Connect islands
 	connect_islands()
+
+func generate_beaches(terrain_data: Dictionary, noise_data: Dictionary) -> void:
+	# Add sand borders with multiple layers
+	var beach_width = 4  # Increased beach width further
+	var sand_positions = []  # Track sand positions to add to walkable_tiles at the end
+	
+	for layer in range(beach_width):
+		for y in range(map_height):
+			for x in range(map_width):
+				var pos = Vector2i(x, y)
+				if terrain_data[pos] == "grass":
+					# Check for water or sand in expanding radius
+					var has_water_or_outer_sand = false
+					for radius in range(1, layer + 2):
+						for dx in range(-radius, radius + 1):
+							for dy in range(-radius, radius + 1):
+								if abs(dx) == radius or abs(dy) == radius:  # Check only the outer ring
+									var check_pos = Vector2i(x + dx, y + dy)
+									if check_pos.x >= 0 and check_pos.x < map_width and \
+									   check_pos.y >= 0 and check_pos.y < map_height:
+										var check_type = terrain_data.get(check_pos, "")
+										if check_type == "water" or (layer > 0 and check_type == "sand"):
+											# Use noise value to create more natural transitions
+											var noise_diff = abs(noise_data[pos] - noise_data.get(check_pos, 0))
+											if noise_diff < 0.15 + (0.08 * layer):  # Increased thresholds for wider beaches
+												has_water_or_outer_sand = true
+												break
+							if has_water_or_outer_sand:
+								break
+						if has_water_or_outer_sand:
+							break
+					
+					if has_water_or_outer_sand:
+						terrain_data[pos] = "sand"
+						sand_positions.append(pos)
+						tile_map.set_cell(pos, tileset_source, sandCoords.pick_random())
+	
+	# Add all sand positions to walkable_tiles
+	for pos in sand_positions:
+		if not walkable_tiles.has(pos):
+			walkable_tiles.append(pos)
 
 func connect_islands():
 	var islands = find_islands()
@@ -111,67 +160,74 @@ func connect_two_islands(island1: Array, island2: Array) -> void:
 		for p2 in island2:
 			var dist = p1.distance_to(p2)
 			if dist < min_distance:
-				# Verify points are within map bounds with ocean border
 				if p1.x >= 0 and p1.x < map_width and p1.y >= 0 and p1.y < map_height and \
 				   p2.x >= 0 and p2.x < map_width and p2.y >= 0 and p2.y < map_height:
 					min_distance = dist
 					point1 = p1
 					point2 = p2
 	
-	# If no valid points found, return
 	if point1 == null or point2 == null:
 		return
 	
-	# Create expanded mouths at both ends
-	var mouth_radius = 4  # Increased mouth radius for wider openings
-	for dx in range(-mouth_radius, mouth_radius + 1):
-		for dy in range(-mouth_radius, mouth_radius + 1):
-			# Use elliptical shape for mouths (wider than tall)
-			if (dx * dx) / 16.0 + (dy * dy) / 9.0 <= 1.0:  # Elliptical mouth
-				var mouth1 = Vector2i(point1.x + dx, point1.y + dy)
-				var mouth2 = Vector2i(point2.x + dx, point2.y + dy)
-				
-				# Check if mouth points are within map bounds
-				if is_valid_tile_position(mouth1):
-					if not walkable_tiles.has(mouth1):
-						tile_map.set_cell(mouth1, tileset_source, grassAtlasCoords.pick_random())
-						walkable_tiles.append(mouth1)
-				if is_valid_tile_position(mouth2):
-					if not walkable_tiles.has(mouth2):
-						tile_map.set_cell(mouth2, tileset_source, grassAtlasCoords.pick_random())
-						walkable_tiles.append(mouth2)
-	
-	# Create a path between the closest points with some variation
+	# Create natural-looking land bridges with varying width
+	var path_points = []
 	var current = point1
-	var path_length = int(point1.distance_to(point2))
-	var current_step = 0
+	var target = point2
 	
-	while current != point2:
-		var dx = sign(point2.x - current.x)
-		var dy = sign(point2.y - current.y)
-		
-		# Calculate how far along the path we are (0.0 to 1.0)
-		var progress = float(current_step) / path_length
-		
-		# Path width varies based on distance from endpoints
-		# Wider at ends, narrower in middle
-		var path_width = int(lerp(2.0, 0.5, smoothstep(0.0, 0.3, min(progress, 1.0 - progress))))
-		
-		# Add varied width to the path
-		for width_x in range(-path_width, path_width + 1):
-			for width_y in range(-path_width, path_width + 1):
-				if width_x * width_x + width_y * width_y <= path_width * path_width:
-					var path_point = Vector2i(current.x + width_x, current.y + width_y)
-					if is_valid_tile_position(path_point) and not walkable_tiles.has(path_point):
-						tile_map.set_cell(path_point, tileset_source, grassAtlasCoords.pick_random())
-						walkable_tiles.append(path_point)
-		
+	# Generate main path points
+	while current != target:
+		path_points.append(current)
+		var dx = sign(target.x - current.x)
+		var dy = sign(target.y - current.y)
 		if dx != 0:
 			current = Vector2i(current.x + dx, current.y)
 		elif dy != 0:
 			current = Vector2i(current.x, current.y + dy)
+	path_points.append(target)
+	
+	# Create natural-looking land with noise-based width variation
+	var terrain_data = {}
+	var noise_data = {}
+	
+	# First, collect existing terrain data
+	for y in range(map_height):
+		for x in range(map_width):
+			var pos = Vector2i(x, y)
+			var cell_data = tile_map.get_cell_atlas_coords(pos)
+			terrain_data[pos] = "water"
+			noise_data[pos] = noise.get_noise_2d(x * 0.1, y * 0.1)
+			
+			# Check if it's grass based on the actual tile
+			if grassAtlasCoords.has(cell_data):
+				terrain_data[pos] = "grass"
+			elif sandCoords.has(cell_data):
+				terrain_data[pos] = "sand"
+	
+	# Add new land bridge
+	for path_idx in range(path_points.size()):
+		var point = path_points[path_idx]
+		# Calculate progress along the path (0 to 1)
+		var progress = float(path_idx) / (path_points.size() - 1)
+		# Width varies based on position - wider at ends, narrower in middle
+		var base_radius = lerp(6.0, 4.0, sin(progress * PI))  # Increased width range
 		
-		current_step += 1
+		# Add noise to the radius
+		var radius_noise = noise.get_noise_2d(point.x * 0.1, point.y * 0.1)
+		var radius = int(base_radius + radius_noise * 2)
+		
+		# Create an elliptical shape around the path point
+		for dx in range(-radius, radius + 1):
+			for dy in range(-radius, radius + 1):
+				var check_point = Vector2i(point.x + dx, point.y + dy)
+				# Use elliptical distance check for more natural shape
+				var dist = sqrt(pow(dx / base_radius, 2) + pow(dy / (base_radius * 0.7), 2))
+				if dist <= 1.0 and is_valid_tile_position(check_point):
+					terrain_data[check_point] = "grass"
+					if not walkable_tiles.has(check_point):
+						walkable_tiles.append(check_point)
+	
+	# Generate beaches for the new land
+	generate_beaches(terrain_data, noise_data)
 
 func is_valid_tile_position(pos: Vector2i) -> bool:
 	var border_width = 8  # Same as in generate_terrain
