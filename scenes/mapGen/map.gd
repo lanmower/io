@@ -253,25 +253,16 @@ func generate_cement_areas(terrain_data: Dictionary) -> void:
 	cement_noise.seed = noise.seed + 2
 	cement_noise.frequency = 0.1
 	
-	for _i in range(num_cement_areas):
-		var width = randi_range(4, 12)
-		var height = randi_range(4, 12)
-		var attempts = 0
-		var max_attempts = 50
-		
-		while attempts < max_attempts:
-			# Find a random position on grass
-			var x = randi_range(10, map_width - width - 10)
-			var y = randi_range(10, map_height - height - 10)
+	# First, find all valid grass positions away from water
+	var valid_positions = []
+	for y in range(10, map_height - 10):
+		for x in range(10, map_width - 10):
 			var pos = Vector2i(x, y)
-			
-			# Check if position is valid (on grass and not too close to water)
 			var valid = true
-			var region = Rect2i(x, y, width, height)
 			
-			# Check if the area is on grass and not too close to water
-			for check_y in range(region.position.y - 2, region.end.y + 2):
-				for check_x in range(region.position.x - 2, region.end.x + 2):
+			# Check surrounding area for water
+			for check_y in range(pos.y - 2, pos.y + 2):
+				for check_x in range(pos.x - 2, pos.x + 2):
 					var check_pos = Vector2i(check_x, check_y)
 					if terrain_data.get(check_pos, "") == "water":
 						valid = false
@@ -280,18 +271,53 @@ func generate_cement_areas(terrain_data: Dictionary) -> void:
 					break
 			
 			if valid:
-				# Check for overlap with existing regions
-				for existing_region in cement_regions:
-					if region.intersects(existing_region):
-						# Merge regions if they overlap
-						region = region.merge(existing_region)
-						cement_regions.erase(existing_region)
-				
-				cement_regions.append(region)
-				place_cement_area(region, terrain_data)
-				break
-			
-			attempts += 1
+				valid_positions.append(pos)
+	
+	# Generate cement areas, allowing and encouraging overlaps
+	for _i in range(num_cement_areas):
+		var width = randi_range(4, 12)
+		var height = randi_range(4, 12)
+		
+		# Try to place near existing regions with 70% probability if there are any
+		var pos: Vector2i
+		if cement_regions.size() > 0 and randf() < 0.7:
+			# Pick a random existing region
+			var existing_region = cement_regions.pick_random()
+			# Generate position near the existing region
+			var offset_x = randi_range(-width, existing_region.size.x)
+			var offset_y = randi_range(-height, existing_region.size.y)
+			pos = Vector2i(
+				existing_region.position.x + offset_x,
+				existing_region.position.y + offset_y
+			)
+			# Clamp to valid range
+			pos.x = clamp(pos.x, 10, map_width - width - 10)
+			pos.y = clamp(pos.y, 10, map_height - height - 10)
+		else:
+			# Place randomly if no existing regions or 30% chance
+			var valid_pos = valid_positions.pick_random()
+			pos = Vector2i(
+				valid_pos.x - width/2,
+				valid_pos.y - height/2
+			)
+			pos.x = clamp(pos.x, 10, map_width - width - 10)
+			pos.y = clamp(pos.y, 10, map_height - height - 10)
+		
+		var region = Rect2i(pos.x, pos.y, width, height)
+		
+		# Merge with any overlapping regions
+		var merged_region = region
+		var regions_to_remove = []
+		for existing_region in cement_regions:
+			if merged_region.intersects(existing_region):
+				merged_region = merged_region.merge(existing_region)
+				regions_to_remove.append(existing_region)
+		
+		# Remove merged regions and add new merged region
+		for r in regions_to_remove:
+			cement_regions.erase(r)
+		cement_regions.append(merged_region)
+		place_cement_area(merged_region, terrain_data)
 	
 	# First add fences around cement areas
 	add_fences_to_cement(terrain_data, cement_regions)
