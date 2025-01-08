@@ -21,6 +21,7 @@ Constants="*res://scenes/autoloads/Constants.gd"
 Multihelper="*res://scenes/autoloads/Multihelper.gd"
 Inventory="*res://scenes/autoloads/Inventory.gd"
 Items="*res://scenes/autoloads/Items.gd"
+AudioManager="*res://scenes/autoloads/AudioManager.gd"
 
 [display]
 

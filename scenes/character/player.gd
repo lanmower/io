@@ -72,6 +72,12 @@ func _ready():
 		# Set up debug camera if debug settings are available
 		if Multihelper.debug_camera_settings != null and Multihelper.debug_camera_settings.has("zoom"):
 			$Camera2D.zoom = Vector2(8, 8)  # Fixed zoom to show the whole map
+		# Set up audio players for local player
+		$FootstepsAudioPlayer.queue_free()  # Remove the normal footsteps player
+		$AnimationPlayer.get_animation("walking").track_set_path(1, NodePath("OwnFootstepsPlayer"))
+	else:
+		# For other players, remove the own footsteps player
+		$OwnFootstepsPlayer.queue_free()
 	Multihelper.player_disconnected.connect(disconnected)
 
 func visibilityFilter(id):

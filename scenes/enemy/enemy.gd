@@ -58,6 +58,8 @@ func move_towards_position():
 	var direction = (targetPlayer.position - position).normalized()
 	velocity = direction * speed
 	move_and_slide()
+	if !$AnimationPlayer.is_playing() or $AnimationPlayer.current_animation != "walking":
+		$AnimationPlayer.play("walking")
 
 func tryAttack():
 	if multiplayer.is_server() and $AttackCooldown.is_stopped():
@@ -84,6 +86,7 @@ func getDamage(causer, amount, _type):
 
 func die(dropLoot):
 	if multiplayer.is_server():
+		$AnimationPlayer.stop()  # Stop any playing animations
 		spawner.decreasePlayerEnemyCount(targetPlayerId)
 		queue_free()
 		if dropLoot:
@@ -109,6 +112,9 @@ func circle_target():
 	
 	velocity = circle_direction.normalized() * speed * circle_speed_modifier
 	move_and_slide()
+	
+	if !$AnimationPlayer.is_playing() or $AnimationPlayer.current_animation != "walking":
+		$AnimationPlayer.play("walking")
 	
 	# Randomly change direction sometimes
 	if randf() < 0.01:  # 1% chance per frame to change direction
