@@ -30,6 +30,13 @@ var attack := ""
 var attackRange := 50.0
 var attackDamage := 20.0
 var drops := {}
+var circling_direction := 1  # 1 for clockwise, -1 for counter-clockwise
+var circle_radius := 100.0   # How far from player to circle
+var circle_speed_modifier := 0.7  # Adjust this to control circling speed
+
+func _ready():
+	# Randomly choose initial circling direction
+	circling_direction = 1 if randf() > 0.5 else -1
 
 func _process(_delta):
 	if !multiplayer.is_server():
@@ -39,6 +46,7 @@ func _process(_delta):
 		if position.distance_to(targetPlayer.position) > attackRange:
 			move_towards_position()
 		else:
+			circle_target()
 			tryAttack()
 	else:
 		die(false)
@@ -84,3 +92,24 @@ func die(dropLoot):
 func dropLoots():
 	for drop in drops.keys():
 		Items.spawnPickups(drop, position, randi_range(drops[drop]["min"],drops[drop]["max"]))
+
+func circle_target():
+	var to_target = targetPlayer.position - position
+	var distance = to_target.length()
+	
+	# Calculate perpendicular direction for circling
+	var circle_direction = Vector2(-to_target.y, to_target.x).normalized() * circling_direction
+	
+	# If too close or too far, adjust radius
+	var radial_direction = to_target.normalized()
+	if distance < circle_radius:
+		circle_direction += -radial_direction
+	elif distance > circle_radius:
+		circle_direction += radial_direction
+	
+	velocity = circle_direction.normalized() * speed * circle_speed_modifier
+	move_and_slide()
+	
+	# Randomly change direction sometimes
+	if randf() < 0.01:  # 1% chance per frame to change direction
+		circling_direction *= -1
