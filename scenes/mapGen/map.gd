@@ -16,81 +16,113 @@ var map_height = Constants.MAP_SIZE.y
 var walkable_tiles = []
 @onready var tile_map = $TileMap
 
+func _ready():
+	# Initialize noise for tinting
+	noise.seed = Multihelper.mapSeed + 500
+	noise.frequency = 0.1  # Increased frequency for more variation
+
+func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
+	# Set the base tile
+	tile_map.set_cell(pos, tileset_source, atlas_coords)
+	
+	# Use the same noise settings as terrain generation
+	var noise_val = noise.get_noise_2d(pos.x, pos.y)
+	noise_val = (noise_val + 1.0) * 0.5  # Convert to 0-1 range
+	
+	# Calculate tint based on tile type
+	var tint = Color.WHITE
+	match tile_type:
+		"grass":
+			tint = Color(
+				lerp(0.6, 1.2, noise_val),  # red (doubled from 0.8-1.1)
+				lerp(0.8, 1.4, noise_val),  # green (doubled from 1.0-1.2)
+				lerp(0.6, 1.2, noise_val)   # blue (doubled from 0.8-1.0)
+			)
+		"water":
+			tint = Color(
+				lerp(0.7, 1.1, noise_val),  # red (doubled from 0.8-0.9)
+				lerp(0.7, 1.3, noise_val),  # green (doubled from 0.8-1.0)
+				lerp(0.9, 1.5, noise_val)   # blue (doubled from 1.1-1.3)
+			)
+		"sand":
+			tint = Color(
+				lerp(0.8, 1.4, noise_val),  # red (doubled from 1.0-1.2)
+				lerp(0.7, 1.3, noise_val),  # green (doubled from 0.9-1.1)
+				lerp(0.5, 1.1, noise_val)   # blue (doubled from 0.7-0.9)
+			)
+		"cement":
+			var gray = lerp(0.7, 1.3, noise_val)  # doubled from 0.9-1.1
+			tint = Color(gray, gray, gray)
+	
+	# Apply tint to the tile
+	var tile_data = tile_map.get_cell_tile_data(pos)
+	if tile_data:
+		tile_data.modulate = tint
+
 func generateMap():
+	# Initialize main terrain noise
 	noise.seed = Multihelper.mapSeed
 	noise.noise_type = FastNoiseLite.TYPE_PERLIN
-	noise.fractal_octaves = 4  # Increased from 1.1 for more terrain variation
+	noise.fractal_octaves = 4
 	noise.fractal_lacunarity = 2.0
-	noise.frequency = 0.02  # Slightly reduced for larger features
+	noise.frequency = 0.02
+	
 	generate_terrain()
 
 func generate_terrain():
 	walkable_tiles.clear()
-	var border_width = 8  # Width of ocean border
-	var border_falloff = 4  # How gradually the border blends
+	var border_width = 8
+	var border_falloff = 4
 	
-	# First pass: Generate basic terrain (grass and water)
 	var terrain_data = {}
-	var noise_data = {}  # Store raw noise values for better transitions
+	var noise_data = {}
 	for y in range(map_height):
 		for x in range(map_width):
 			var noise_value = noise.get_noise_2d(x, y)
 			var pos = Vector2i(x, y)
 			noise_data[pos] = noise_value
 			
-			# Calculate distance from edges
 			var dist_from_edge = min(
 				min(x, map_width - x),
 				min(y, map_height - y)
 			)
 			
-			# Adjust noise threshold based on distance from edge
-			var threshold = -0.1  # Lower base threshold to generate more land
+			var threshold = -0.1
 			if dist_from_edge < border_width:
-				threshold = 1.0  # Guarantee ocean
+				threshold = 1.0
 			elif dist_from_edge < border_width + border_falloff:
 				var t = float(dist_from_edge - border_width) / border_falloff
-				threshold = lerp(1.0, -0.1, t)  # Gradual transition
+				threshold = lerp(1.0, -0.1, t)
 			
 			if noise_value > threshold:
 				terrain_data[pos] = "grass"
 				walkable_tiles.append(pos)
-				tile_map.set_cell(pos, tileset_source, grassAtlasCoords.pick_random(), 0)  # Set grass
+				set_tile(pos, "grass", grassAtlasCoords.pick_random())
 			else:
 				terrain_data[pos] = "water"
-				tile_map.set_cell(pos, tileset_source, waterCoors.pick_random(), 0)  # Set water
+				set_tile(pos, "water", waterCoors.pick_random())
 	
-	# Generate beaches and set tiles
 	generate_beaches(terrain_data, noise_data)
-	
-	# Connect islands
 	connect_islands()
-	
-	# Generate cement areas with beaches and fences
 	generate_cement_areas(terrain_data)
 
 func generate_beaches(terrain_data: Dictionary, noise_data: Dictionary) -> void:
-	# Add sand borders with varying width based on noise
-	var max_beach_width = 3  # Maximum possible beach width
-	
-	# Create a separate noise for beach width variation
+	var max_beach_width = 3
 	var beach_noise = FastNoiseLite.new()
-	beach_noise.seed = noise.seed + 1  # Different seed for variety
-	beach_noise.frequency = 0.1  # Lower frequency for smoother transitions
+	beach_noise.seed = noise.seed + 1
+	beach_noise.frequency = 0.1
 	
 	for y in range(map_height):
 		for x in range(map_width):
 			var pos = Vector2i(x, y)
 			if terrain_data[pos] == "grass":
-				# Check for water in expanding radius
 				var has_water = false
 				var closest_water_dist = INF
 				
-				# Check in maximum radius for water
 				for radius in range(1, max_beach_width + 1):
 					for dx in range(-radius, radius + 1):
 						for dy in range(-radius, radius + 1):
-							if abs(dx) == radius or abs(dy) == radius:  # Check only the outer ring
+							if abs(dx) == radius or abs(dy) == radius:
 								var check_pos = Vector2i(x + dx, y + dy)
 								if check_pos.x >= 0 and check_pos.x < map_width and \
 								   check_pos.y >= 0 and check_pos.y < map_height:
@@ -100,17 +132,14 @@ func generate_beaches(terrain_data: Dictionary, noise_data: Dictionary) -> void:
 											closest_water_dist = dist
 											has_water = true
 				
-				# If we found water within range, consider making this a beach
 				if has_water and closest_water_dist <= max_beach_width:
-					# Use noise to determine beach width at this position
-					var width_noise = (beach_noise.get_noise_2d(x * 0.1, y * 0.1) + 1) * 0.5  # Range 0 to 1
+					var width_noise = (beach_noise.get_noise_2d(x * 0.1, y * 0.1) + 1) * 0.5
 					var local_beach_width = width_noise * max_beach_width
 					
-					# Add randomness for gaps (about 15% chance of no beach)
 					var gap_noise = beach_noise.get_noise_2d(x * 0.3, y * 0.3)
-					if gap_noise > -0.7 and closest_water_dist <= local_beach_width:  # -0.7 gives ~15% chance of gaps
+					if gap_noise > -0.7 and closest_water_dist <= local_beach_width:
 						terrain_data[pos] = "sand"
-						tile_map.set_cell(pos, tileset_source, sandCoords.pick_random(), 0)
+						set_tile(pos, "sand", sandCoords.pick_random())
 						if not walkable_tiles.has(pos):
 							walkable_tiles.append(pos)
 
@@ -249,7 +278,7 @@ func connect_two_islands(island1: Array, island2: Array) -> void:
 					terrain_data[check_point] = "grass"
 					if not walkable_tiles.has(check_point):
 						walkable_tiles.append(check_point)
-					tile_map.set_cell(check_point, tileset_source, grassAtlasCoords.pick_random(), 0)
+					tile_map.set_cell(check_point, tileset_source, grassAtlasCoords.pick_random())
 	
 	# Generate beaches for the new land with wider beach areas
 	generate_beaches(terrain_data, noise_data)
@@ -344,7 +373,7 @@ func place_cement_area(region: Rect2i, terrain_data: Dictionary) -> void:
 		for x in range(region.position.x, region.end.x):
 			var pos = Vector2i(x, y)
 			terrain_data[pos] = "cement"
-			tile_map.set_cell(pos, tileset_source, cementCoords.pick_random(), 0)
+			set_tile(pos, "cement", cementCoords.pick_random())
 
 func generate_cement_beaches(terrain_data: Dictionary, cement_regions: Array) -> void:
 	var max_beach_width = 3  # Increased maximum beach width around cement
@@ -392,7 +421,7 @@ func generate_cement_beaches(terrain_data: Dictionary, cement_regions: Array) ->
 						var gap_noise = beach_noise.get_noise_2d(x * 0.4, y * 0.4)
 						if gap_noise > -0.7 and min_dist <= local_beach_width:  # ~15% chance of gaps
 							terrain_data[pos] = "sand"
-							tile_map.set_cell(pos, tileset_source, sandCoords.pick_random(), 0)
+							tile_map.set_cell(pos, tileset_source, sandCoords.pick_random())
 
 func add_fences_to_cement(terrain_data: Dictionary, cement_regions: Array) -> void:
 	for region in cement_regions:
@@ -458,4 +487,4 @@ func add_fences_to_cement(terrain_data: Dictionary, cement_regions: Array) -> vo
 			for pos in side:
 				if terrain_data.get(pos, "") != "cement":
 					terrain_data[pos] = "fence"  # Mark the position as fence in terrain data
-					tile_map.set_cell(pos, tileset_source, wallCoords[0], 0)
+					tile_map.set_cell(pos, tileset_source, wallCoords[0])
