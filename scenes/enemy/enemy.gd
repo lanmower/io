@@ -16,8 +16,34 @@ var targetPlayer : CharacterBody2D
 		if value != "":  # Only load texture if we have a valid ID
 			var enemyData = Items.mobs[value]
 			%Sprite2D.texture = load("res://assets/characters/enemy/"+value+".png")
+			
+			# Apply visual variations if they exist
+			if "variations" in enemyData:
+				var vars = enemyData["variations"]
+				
+				# Apply scale variation
+				if "scale" in vars:
+					var scale_factor = randf_range(vars["scale"]["min"], vars["scale"]["max"])
+					%Sprite2D.scale = Vector2(scale_factor, scale_factor)
+				
+				# Apply color tint and opacity
+				if "tint" in vars:
+					var r = randf_range(vars["tint"]["r"]["min"], vars["tint"]["r"]["max"])
+					var g = randf_range(vars["tint"]["g"]["min"], vars["tint"]["g"]["max"])
+					var b = randf_range(vars["tint"]["b"]["min"], vars["tint"]["b"]["max"])
+					var a = 1.0
+					if "opacity" in vars:
+						a = randf_range(vars["opacity"]["min"], vars["opacity"]["max"])
+					%Sprite2D.modulate = Color(r, g, b, a)
+				
+				# Apply random flip
+				if "flip_chance" in vars and randf() < vars["flip_chance"]:
+					%Sprite2D.flip_h = true
+			
+			# Apply stats
 			for stat in enemyData.keys():
-				set(stat, enemyData[stat])
+				if stat != "variations":  # Skip variations as it's not a stat
+					set(stat, enemyData[stat])
 
 var maxhp := 100.0:
 	set(value):

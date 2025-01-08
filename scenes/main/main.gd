@@ -11,12 +11,13 @@ var spawnedObjects := 0
 const SERVER_CAMERA_ZOOM := Vector2(0.1, 0.1)
 
 #enemies
-var enemyTypes := Items.mobs.keys()
+var current_day := 0  # Track the current day
 const enemyWaveCount := 1
 const maxEnemiesPerPlayer := Constants.MAX_ENEMIES_PER_PLAYER
 const enemySpawnRadiusMin := 8
 const enemySpawnRadiusMax := 9
 var spawnedEnemies := {}
+var boss_spawned := false  # Track if boss is spawned for current day
 
 func _ready():
 	if multiplayer.is_server():
@@ -24,8 +25,18 @@ func _ready():
 		spawnObjects(initialSpawnObjects)
 		$HUD.queue_free()
 		setupServerCamera()
+	$dayNight.time_tick.connect(_on_time_tick)
 	$dayNight.time_tick.connect(%DayNightCycleUI.set_daytime)
 	createHUD()
+
+func _on_time_tick(day: int, hour: int, _minute: int):
+	if day != current_day:
+		current_day = day
+		boss_spawned = false  # Reset boss spawn flag for new day
+	
+	# Try to spawn boss at noon
+	if hour == 12 and !boss_spawned:
+		trySpawnBoss()
 
 func setupServerCamera():
 	var camera := Camera2D.new()
@@ -66,9 +77,40 @@ func _on_object_spawn_timer_timeout():
 		trySpawnObjectWave()
 
 #enemy spawn
+func trySpawnBoss():
+	var available_bosses = Items.get_bosses_for_day(current_day)
+	if available_bosses.is_empty():
+		return
+		
+	var enemyScene := preload("res://scenes/enemy/enemy.tscn")
+	var players = Multihelper.spawnedPlayers.keys()
+	if players.is_empty():
+		return
+		
+	# Spawn boss near a random player
+	var target_player = players.pick_random()
+	var spawn_pos = $NavHelper.getNRandomNavigableTileInPlayerRadius(target_player, 1, enemySpawnRadiusMin, enemySpawnRadiusMax)[0]
+	
+	var boss = enemyScene.instantiate()
+	$Enemies.add_child(boss, true)
+	boss.position = spawn_pos
+	boss.spawner = self
+	boss.targetPlayerId = target_player
+	boss.enemyId = available_bosses.pick_random()
+	boss_spawned = true
+	increasePlayerEnemyCount(target_player)
+
 func trySpawnEnemies():
 	var enemyScene := preload("res://scenes/enemy/enemy.tscn")
 	var players = Multihelper.spawnedPlayers.keys()
+	var available_mobs = Items.get_mobs_for_day(current_day)
+	
+	# Filter out boss mobs from regular spawns
+	available_mobs = available_mobs.filter(func(mob_name): return !("is_boss" in Items.mobs[mob_name] and Items.mobs[mob_name]["is_boss"]))
+	
+	if available_mobs.is_empty():
+		return
+		
 	for player in players:
 		var playerEnemies := getPlayerEnemyCount(player)
 		if playerEnemies < maxEnemiesPerPlayer:
@@ -80,7 +122,7 @@ func trySpawnEnemies():
 				enemy.position = pos
 				enemy.spawner = self
 				enemy.targetPlayerId = player
-				enemy.enemyId = enemyTypes.pick_random()
+				enemy.enemyId = available_mobs.pick_random()
 				increasePlayerEnemyCount(player)
 
 func getPlayerEnemyCount(pId) -> int:
