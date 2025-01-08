@@ -54,7 +54,7 @@ var damageType := "normal":
 			return Items.equips[equippedItem]["damageType"]
 		else:
 			return damageType
-var attackRange := 30.0:
+var attackRange := 60.0:
 	set(value):
 		attackRange = value
 		%HitCollision.shape.height = 20 * value
