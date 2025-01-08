@@ -131,10 +131,10 @@ show_percentage = false
 
 [node name="FootstepsAudioPlayer" type="AudioStreamPlayer2D" parent="."]
 stream = ExtResource("3_bflkw")
-pitch_scale = 1.5
-volume_db = -6.0
+pitch_scale = 3.0
+volume_db = -26.0
 bus = "FootstepSounds"
-max_distance = 500.0
+max_distance = 1250.0
 attenuation = 2.0
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="."]
