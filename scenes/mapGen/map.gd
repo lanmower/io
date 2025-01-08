@@ -114,6 +114,12 @@ func generateMap():
 	# Use the noise settings already initialized in _ready()
 	generate_terrain()
 	
+	# Clear any invalid tiles from walkable_tiles
+	walkable_tiles = walkable_tiles.filter(func(pos): 
+		var tileCoords = tile_map.get_cell_atlas_coords(pos)
+		return not waterCoors.has(tileCoords)
+	)
+	
 	# If we're the server, sync walkable tiles to clients
 	if multiplayer.is_server():
 		sync_walkable_tiles.rpc(walkable_tiles)

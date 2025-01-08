@@ -152,7 +152,35 @@ func spawnPlayer(playerName, id, characterFile):
 	newPlayer.characterFile = characterFile
 	newPlayer.name = str(id)
 	main.get_node("Players").add_child(newPlayer)
-	newPlayer.sendPos.rpc(map.tile_map.map_to_local(map.walkable_tiles.pick_random()))
+	
+	# Get a valid spawn position that's definitely not water
+	var spawnPos = Vector2.ZERO
+	var attempts = 0
+	var maxAttempts = 10
+	
+	while attempts < maxAttempts:
+		var candidatePos = map.walkable_tiles.pick_random()
+		var tileCoords = map.tile_map.get_cell_atlas_coords(candidatePos)
+		
+		# Check if the tile is definitely not water
+		if not map.waterCoors.has(tileCoords):
+			spawnPos = map.tile_map.map_to_local(candidatePos)
+			break
+		attempts += 1
+	
+	# If we somehow failed to find a valid position, force pick a grass tile
+	if spawnPos == Vector2.ZERO:
+		for y in range(map.map_height):
+			for x in range(map.map_width):
+				var pos = Vector2i(x, y)
+				var tileCoords = map.tile_map.get_cell_atlas_coords(pos)
+				if map.grassAtlasCoords.has(tileCoords):
+					spawnPos = map.tile_map.map_to_local(pos)
+					break
+			if spawnPos != Vector2.ZERO:
+				break
+	
+	newPlayer.sendPos.rpc(spawnPos)
 
 @rpc("any_peer", "call_remote", "reliable")
 func showSpawnUI():
