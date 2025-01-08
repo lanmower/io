@@ -6,16 +6,18 @@ var targetPlayer : CharacterBody2D
 @export var targetPlayerId : int:
 	set(value):
 		targetPlayerId = value
-		targetPlayer = get_node("../../Players/"+str(value))
+		if multiplayer.is_server():
+			targetPlayer = get_node("../../Players/"+str(value))
 
 #stats
 @export var enemyId := "":
 	set(value):
 		enemyId = value
-		var enemyData = Items.mobs[value]
-		%Sprite2D.texture = load("res://assets/characters/enemy/"+value+".png")
-		for stat in enemyData.keys():
-			set(stat, enemyData[stat])
+		if value != "":  # Only load texture if we have a valid ID
+			var enemyData = Items.mobs[value]
+			%Sprite2D.texture = load("res://assets/characters/enemy/"+value+".png")
+			for stat in enemyData.keys():
+				set(stat, enemyData[stat])
 
 var maxhp := 100.0:
 	set(value):
