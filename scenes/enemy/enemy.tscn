@@ -72,7 +72,9 @@ corner_radius_top_right = 5
 corner_radius_bottom_right = 5
 corner_radius_bottom_left = 5
 
-[node name="Enemy" type="CharacterBody2D" groups=["damageable"]]
+[node name="Enemy" type="CharacterBody2D" groups=["damageable", "enemy"]]
+collision_layer = 1
+collision_mask = 1
 script = ExtResource("1_afvkb")
 
 [node name="MovingParts" type="Node2D" parent="."]
