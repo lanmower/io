@@ -54,11 +54,10 @@ var damageType := "normal":
 			return Items.equips[equippedItem]["damageType"]
 		else:
 			return damageType
-var attackRange := 3.0:
+var attackRange := 30.0:
 	set(value):
-		var clampedVal = clampf(value, 1.0, 5.0)
-		attackRange = clampedVal
-		%HitCollision.shape.height = 20 * clampedVal
+		attackRange = value
+		%HitCollision.shape.height = 20 * value
 
 func _ready():
 	if multiplayer.is_server():
