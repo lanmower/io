@@ -16,6 +16,8 @@ var map_height = Constants.MAP_SIZE.y
 var walkable_tiles = []
 @onready var tile_map = $TileMap
 
+signal map_reset
+
 func _ready():
 	# Initialize noise for tinting - use same settings as terrain generation
 	noise.seed = Multihelper.mapSeed
@@ -535,3 +537,29 @@ func add_fences_to_cement(terrain_data: Dictionary, cement_regions: Array) -> vo
 				if terrain_data.get(pos, "") != "cement":
 					terrain_data[pos] = "fence"  # Mark the position as fence in terrain data
 					tile_map.set_cell(pos, tileset_source, wallCoords[0])
+
+func reset_map():
+	# Clear all existing objects
+	for child in get_children():
+		if child != tile_map:  # Keep the tile map but clear everything else
+			child.queue_free()
+	
+	# Reset the map generation
+	generateMap()
+	
+	# Emit signal that map has been reset
+	map_reset.emit()
+
+# Add this function to be called when a player spawns
+func handle_player_spawn(is_first_player: bool):
+	if is_first_player:
+		# Reset to day 1 and clear the map
+		reset_map()
+		
+		# If we're the server, notify clients
+		if multiplayer.is_server():
+			reset_map_rpc.rpc()
+
+@rpc("authority", "call_remote", "reliable")
+func reset_map_rpc():
+	reset_map()
