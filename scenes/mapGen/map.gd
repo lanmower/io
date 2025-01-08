@@ -17,22 +17,18 @@ var walkable_tiles = []
 @onready var tile_map = $TileMap
 
 func _ready():
-	# Initialize noise for tinting - use same settings as terrain generation
+	# Initialize noise for terrain generation
 	noise.seed = Multihelper.mapSeed
 	noise.noise_type = FastNoiseLite.TYPE_PERLIN
 	noise.fractal_octaves = 4
 	noise.fractal_lacunarity = 2.0
 	noise.frequency = 0.02
 	
-	# Only generate map on server or in single player
+	# Generate map on server, or if we're the client wait for server data
 	if multiplayer.is_server():
 		generateMap()
 
 func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
-	# Only server should set tiles initially
-	if !multiplayer.is_server():
-		return
-		
 	# Set the base tile
 	tile_map.set_cell(pos, tileset_source, atlas_coords)
 	
@@ -43,34 +39,33 @@ func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
 	var tint = Color.WHITE
 	match tile_type:
 		"grass":
-			# Use noise value for terrain-based variation
-			# Convert from -1,1 to 0,1 range and enhance contrast
-			var height_factor = pow((noise_val + 1.0) * 0.5, 0.7)  # Power less than 1 enhances darker areas
+			# Use raw noise value for terrain-based variation
+			var height_factor = (noise_val + 1.0) * 0.5  # Convert from -1,1 to 0,1
 			tint = Color(
-				lerp(0.5, 1.3, height_factor),  # red - strong variation
-				lerp(0.6, 1.4, height_factor),  # green - strongest variation for grass
-				lerp(0.5, 1.3, height_factor)   # blue - strong variation
+				lerp(0.6, 1.4, height_factor),  # red - more dramatic variation
+				lerp(0.7, 1.5, height_factor),  # green - even more variation for grass
+				lerp(0.6, 1.4, height_factor)   # blue - more dramatic variation
 			)
 		"water":
-			# More visible water depth variation
-			var depth_factor = pow((-noise_val + 1.0) * 0.5, 1.3)  # Power greater than 1 enhances deeper areas
+			# More dramatic water depth variation
+			var depth_factor = (-noise_val + 1.0) * 0.5  # Deeper water for lower terrain
 			tint = Color(
-				lerp(0.9, 0.3, depth_factor),  # red - dramatic darkening in deep water
-				lerp(0.9, 0.3, depth_factor),  # green - dramatic darkening in deep water
-				lerp(1.1, 0.6, depth_factor)   # blue - maintain water feel with strong depth variation
+				lerp(0.8, 0.4, depth_factor),  # red - much darker in deep water
+				lerp(0.8, 0.4, depth_factor),  # green - much darker in deep water
+				lerp(1.0, 0.7, depth_factor)   # blue - maintain water feel but with more variation
 			)
 		"sand":
-			# More visible sand height variation
-			var height_factor = pow((noise_val + 1.0) * 0.5, 0.8)  # Slightly enhance lower areas
+			# Sand color varies with terrain height
+			var height_factor = (noise_val + 1.0) * 0.5
 			tint = Color(
-				lerp(0.6, 1.2, height_factor),  # red - strong variation
-				lerp(0.5, 1.1, height_factor),  # green - moderate variation
-				lerp(0.4, 1.0, height_factor)   # blue - less variation
+				lerp(0.7, 1.3, height_factor),  # red - more variation
+				lerp(0.6, 1.2, height_factor),  # green - moderate variation
+				lerp(0.5, 1.1, height_factor)   # blue - less variation
 			)
 		"cement":
-			# More visible cement height variation
-			var height_factor = pow((noise_val + 1.0) * 0.5, 0.9)
-			var gray = lerp(0.6, 1.3, height_factor)  # Increased contrast
+			# Cement follows terrain height
+			var height_factor = (noise_val + 1.0) * 0.5
+			var gray = lerp(0.7, 1.2, height_factor)
 			tint = Color(gray, gray, gray)
 	
 	# Apply tint to the tile
@@ -78,8 +73,9 @@ func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
 	if tile_data:
 		tile_data.modulate = tint
 		
-	# Synchronize the tile to clients
-	sync_tile.rpc(pos, atlas_coords, tint)
+	# If we're the server, synchronize to clients
+	if multiplayer.is_server():
+		sync_tile.rpc(pos, atlas_coords, tint)
 
 @rpc("authority", "call_remote", "reliable")
 func sync_tile(pos: Vector2i, atlas_coords: Vector2i, tint: Color):
@@ -88,6 +84,10 @@ func sync_tile(pos: Vector2i, atlas_coords: Vector2i, tint: Color):
 	var tile_data = tile_map.get_cell_tile_data(pos)
 	if tile_data:
 		tile_data.modulate = tint
+
+@rpc("authority", "call_remote", "reliable")
+func sync_walkable_tiles(tiles: Array):
+	walkable_tiles = tiles
 
 func generateMap():
 	# Initialize main terrain noise
@@ -98,6 +98,10 @@ func generateMap():
 	noise.frequency = 0.02
 	
 	generate_terrain()
+	
+	# If we're the server, sync walkable tiles to clients
+	if multiplayer.is_server():
+		sync_walkable_tiles.rpc(walkable_tiles)
 
 func generate_terrain():
 	walkable_tiles.clear()
