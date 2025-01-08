@@ -151,15 +151,32 @@ func generate_terrain():
 			
 			if noise_value > threshold:
 				terrain_data[pos] = "grass"
-				walkable_tiles.append(pos)
 				set_tile(pos, "grass", grassAtlasCoords.pick_random())
 			else:
 				terrain_data[pos] = "water"
 				set_tile(pos, "water", waterCoors.pick_random())
 	
+	# Update walkable tiles after all terrain is set
+	for y in range(map_height):
+		for x in range(map_width):
+			var pos = Vector2i(x, y)
+			var tileCoords = tile_map.get_cell_atlas_coords(pos)
+			if not waterCoors.has(tileCoords):
+				walkable_tiles.append(pos)
+	
 	generate_beaches(terrain_data, noise_data)
 	connect_islands()
 	generate_cement_areas(terrain_data)
+	
+	# Final validation of walkable tiles
+	walkable_tiles = walkable_tiles.filter(func(pos): 
+		var tileCoords = tile_map.get_cell_atlas_coords(pos)
+		return not waterCoors.has(tileCoords)
+	)
+	
+	# Sync walkable tiles to clients
+	if multiplayer.is_server():
+		sync_walkable_tiles.rpc(walkable_tiles)
 
 func generate_beaches(terrain_data: Dictionary, noise_data: Dictionary) -> void:
 	var max_beach_width = 3

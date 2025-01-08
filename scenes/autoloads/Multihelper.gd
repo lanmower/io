@@ -156,29 +156,45 @@ func spawnPlayer(playerName, id, characterFile):
 	# Get a valid spawn position that's definitely not water
 	var spawnPos = Vector2.ZERO
 	var attempts = 0
-	var maxAttempts = 10
+	var maxAttempts = 20  # Increased attempts
 	
-	while attempts < maxAttempts:
-		var candidatePos = map.walkable_tiles.pick_random()
-		var tileCoords = map.tile_map.get_cell_atlas_coords(candidatePos)
-		
-		# Check if the tile is definitely not water
-		if not map.waterCoors.has(tileCoords):
-			spawnPos = map.tile_map.map_to_local(candidatePos)
-			break
+	# First try: Use walkable tiles
+	while attempts < maxAttempts and spawnPos == Vector2.ZERO:
+		if map.walkable_tiles.size() > 0:
+			var candidatePos = map.walkable_tiles.pick_random()
+			var tileCoords = map.tile_map.get_cell_atlas_coords(candidatePos)
+			if map.grassAtlasCoords.has(tileCoords):  # Only spawn on grass
+				spawnPos = map.tile_map.map_to_local(candidatePos)
 		attempts += 1
 	
-	# If we somehow failed to find a valid position, force pick a grass tile
+	# Second try: Scan for grass tiles if walkable tiles failed
 	if spawnPos == Vector2.ZERO:
-		for y in range(map.map_height):
-			for x in range(map.map_width):
-				var pos = Vector2i(x, y)
-				var tileCoords = map.tile_map.get_cell_atlas_coords(pos)
-				if map.grassAtlasCoords.has(tileCoords):
-					spawnPos = map.tile_map.map_to_local(pos)
+		print("Warning: Failed to find spawn position from walkable tiles, scanning for grass...")
+		var centerX = map.map_width / 2
+		var centerY = map.map_height / 2
+		var radius = 1
+		
+		while radius < max(map.map_width, map.map_height) / 2:
+			for y in range(centerY - radius, centerY + radius + 1):
+				for x in range(centerX - radius, centerX + radius + 1):
+					if x < 0 or x >= map.map_width or y < 0 or y >= map.map_height:
+						continue
+					
+					var pos = Vector2i(x, y)
+					var tileCoords = map.tile_map.get_cell_atlas_coords(pos)
+					if map.grassAtlasCoords.has(tileCoords):
+						spawnPos = map.tile_map.map_to_local(pos)
+						break
+				if spawnPos != Vector2.ZERO:
 					break
 			if spawnPos != Vector2.ZERO:
 				break
+			radius += 1
+	
+	# Emergency fallback: Use a hardcoded safe position
+	if spawnPos == Vector2.ZERO:
+		print("Error: Could not find valid spawn position, using emergency fallback")
+		spawnPos = map.tile_map.map_to_local(Vector2i(map.map_width/2, map.map_height/2))
 	
 	newPlayer.sendPos.rpc(spawnPos)
 
