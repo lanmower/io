@@ -32,41 +32,81 @@ func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
 	# Set the base tile
 	tile_map.set_cell(pos, tileset_source, atlas_coords)
 	
-	# Get the exact same noise value used for terrain generation
-	var noise_val = noise.get_noise_2d(pos.x, pos.y)
+	# Calculate distance to water for coastal slopes
+	var water_influence = 0.0
+	var max_water_distance = 8
 	
-	# Calculate tint based on terrain height
+	if tile_type != "water":
+		# Check surrounding tiles for water
+		for dx in range(-max_water_distance, max_water_distance + 1):
+			for dy in range(-max_water_distance, max_water_distance + 1):
+				var check_pos = Vector2i(pos.x + dx, pos.y + dy)
+				if check_pos.x >= 0 and check_pos.x < map_width and check_pos.y >= 0 and check_pos.y < map_height:
+					var cell = tile_map.get_cell_atlas_coords(check_pos)
+					if waterCoors.has(cell):
+						var distance = Vector2(dx, dy).length()
+						if distance <= max_water_distance:
+							water_influence = max(water_influence, pow(1.0 - (distance / max_water_distance), 1.5))
+	
+	# Calculate elevation using multiple noise layers
+	var base_elevation = noise.get_noise_2d(pos.x * 0.02, pos.y * 0.02)
+	var detail_elevation = noise.get_noise_2d(pos.x * 0.04, pos.y * 0.04) * 0.3
+	var elevation = base_elevation + detail_elevation
+	
+	# Create coastal slopes
+	var coastal_height = lerp(elevation, -0.8, water_influence)
+	var height_factor = (coastal_height + 1.0) * 0.5
+	
+	# Calculate slope intensity
+	var slope_intensity = 0.0
+	for offset in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]:
+		var neighbor_pos = pos + offset
+		if neighbor_pos.x >= 0 and neighbor_pos.x < map_width and neighbor_pos.y >= 0 and neighbor_pos.y < map_height:
+			var neighbor_height = noise.get_noise_2d(neighbor_pos.x * 0.02, neighbor_pos.y * 0.02)
+			slope_intensity = max(slope_intensity, abs(elevation - neighbor_height))
+	
+	# Calculate tint based on height and slope
 	var tint = Color.WHITE
 	match tile_type:
 		"grass":
-			# Use raw noise value for terrain-based variation
-			var height_factor = (noise_val + 1.0) * 0.5  # Convert from -1,1 to 0,1
+			# Stronger base colors for grass
+			var base_green = lerp(1.0, 1.4, height_factor)  # More vibrant green base
+			var shadow_intensity = lerp(0.7, 1.1, height_factor)  # Less extreme shadows
+			var slope_shadow = lerp(1.0, 0.85, slope_intensity)  # Subtle slope darkening
+			var coastal_shadow = lerp(1.0, 0.9, water_influence)  # Subtle coastal darkening
+			
+			# Combine factors with stronger base colors
+			var final_intensity = shadow_intensity * slope_shadow * coastal_shadow
 			tint = Color(
-				lerp(0.6, 1.4, height_factor),  # red - more dramatic variation
-				lerp(0.7, 1.5, height_factor),  # green - even more variation for grass
-				lerp(0.6, 1.4, height_factor)   # blue - more dramatic variation
+				lerp(0.8, 1.0, final_intensity),     # Red - more muted
+				base_green * final_intensity,         # Green - more pronounced
+				lerp(0.7, 0.9, final_intensity)      # Blue - more muted
 			)
 		"water":
-			# More dramatic water depth variation
-			var depth_factor = (-noise_val + 1.0) * 0.5  # Deeper water for lower terrain
+			var depth = (-base_elevation + 1.0) * 0.5
 			tint = Color(
-				lerp(0.8, 0.4, depth_factor),  # red - much darker in deep water
-				lerp(0.8, 0.4, depth_factor),  # green - much darker in deep water
-				lerp(1.0, 0.7, depth_factor)   # blue - maintain water feel but with more variation
+				lerp(0.8, 0.6, depth),  # Brighter water
+				lerp(0.8, 0.6, depth),
+				lerp(1.1, 0.8, depth)   # More intense blue
 			)
 		"sand":
-			# Sand color varies with terrain height
-			var height_factor = (noise_val + 1.0) * 0.5
+			# Brighter sand with subtle shading
+			var beach_height = lerp(height_factor, 0.4, water_influence * 0.5)
+			var sand_shadow = lerp(1.0, 0.9, slope_intensity)
+			
+			var sand_intensity = beach_height * sand_shadow
 			tint = Color(
-				lerp(0.7, 1.3, height_factor),  # red - more variation
-				lerp(0.6, 1.2, height_factor),  # green - moderate variation
-				lerp(0.5, 1.1, height_factor)   # blue - less variation
+				lerp(1.0, 1.2, sand_intensity),    # Brighter sand
+				lerp(0.95, 1.15, sand_intensity),  # Slightly yellow tint
+				lerp(0.8, 1.0, sand_intensity)     # Darker blue for contrast
 			)
 		"cement":
-			# Cement follows terrain height
-			var height_factor = (noise_val + 1.0) * 0.5
-			var gray = lerp(0.7, 1.2, height_factor)
-			tint = Color(gray, gray, gray)
+			# More visible cement with subtle weathering
+			var cement_shadow = lerp(1.0, 0.85, slope_intensity)
+			var weathering = water_influence * 0.2
+			var base_gray = lerp(1.1, 0.9, weathering) * cement_shadow
+			
+			tint = Color(base_gray, base_gray, base_gray)
 	
 	# Apply tint to the tile
 	var tile_data = tile_map.get_cell_tile_data(pos)
