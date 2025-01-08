@@ -17,12 +17,12 @@ var walkable_tiles = []
 @onready var tile_map = $TileMap
 
 func _ready():
-	# Initialize noise for terrain generation
+	# Initialize noise for tinting - use same settings as terrain generation
 	noise.seed = Multihelper.mapSeed
 	noise.noise_type = FastNoiseLite.TYPE_PERLIN
-	noise.fractal_octaves = 1  # Single octave for clearer variation
+	noise.fractal_octaves = 4
 	noise.fractal_lacunarity = 2.0
-	noise.frequency = 0.1  # Higher frequency for more visible patterns
+	noise.frequency = 0.02
 	
 	# Generate map on server, or if we're the client wait for server data
 	if multiplayer.is_server():
@@ -32,58 +32,34 @@ func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
 	# Set the base tile
 	tile_map.set_cell(pos, tileset_source, atlas_coords)
 	
-	# Quick water check for darkening near water
-	var water_darkening = 0.0
-	var water_radius = 3
+	# Use the same noise value that generates the terrain
+	var noise_val = noise.get_noise_2d(pos.x, pos.y)
+	noise_val = (noise_val + 1.0) * 0.5  # Convert to 0-1 range
 	
-	for dx in range(-water_radius, water_radius + 1, 2):
-		for dy in range(-water_radius, water_radius + 1, 2):
-			var check_pos = Vector2i(pos.x + dx, pos.y + dy)
-			if check_pos.x >= 0 and check_pos.x < map_width and check_pos.y >= 0 and check_pos.y < map_height:
-				var cell = tile_map.get_cell_atlas_coords(check_pos)
-				if waterCoors.has(cell):
-					var distance = Vector2(dx, dy).length()
-					if distance <= water_radius:
-						water_darkening = max(water_darkening, 1.0 - (distance / water_radius))
-	
-	# Calculate tint based on noise and water proximity
+	# Calculate tint based on tile type with normal variation (half of doubled)
 	var tint = Color.WHITE
 	match tile_type:
 		"grass":
-			# Get raw noise value
-			var noise_val = noise.get_noise_2d(pos.x * 0.1, pos.y * 0.1)
-			# Convert from -1,1 to 0,1 range and add variation
-			var normalized_noise = (noise_val + 1.0) * 0.5
-			
-			# Create more dramatic variation in the base intensity
-			var base_intensity = lerp(0.7, 1.2, normalized_noise)
-			var final_intensity = lerp(base_intensity, base_intensity * 0.8, water_darkening)
-			
 			tint = Color(
-				final_intensity * 0.8,  # Reduced red
-				final_intensity * 1.1,  # Enhanced green
-				final_intensity * 0.7   # Reduced blue
+				lerp(0.7, 1.2, noise_val),  # red (normal range)
+				lerp(0.8, 1.3, noise_val),  # green (normal range)
+				lerp(0.7, 1.2, noise_val)   # blue (normal range)
 			)
 		"water":
 			tint = Color(
-				0.6,
-				0.6,
-				0.9
+				lerp(0.7, 1.1, noise_val),  # red (normal range)
+				lerp(0.7, 1.2, noise_val),  # green (normal range)
+				lerp(0.8, 1.3, noise_val)   # blue (normal range)
 			)
 		"sand":
-			var noise_val = noise.get_noise_2d(pos.x * 0.05, pos.y * 0.05)
-			var base_intensity = lerp(0.8, 1.1, (noise_val + 1.0) * 0.5)
-			var final_intensity = lerp(base_intensity, base_intensity * 0.8, water_darkening)
 			tint = Color(
-				final_intensity,
-				final_intensity * 0.9,
-				final_intensity * 0.7
+				lerp(0.8, 1.3, noise_val),  # red (normal range)
+				lerp(0.7, 1.2, noise_val),  # green (normal range)
+				lerp(0.6, 1.1, noise_val)   # blue (normal range)
 			)
 		"cement":
-			var noise_val = noise.get_noise_2d(pos.x * 0.05, pos.y * 0.05)
-			var base_intensity = lerp(0.8, 1.0, (noise_val + 1.0) * 0.5)
-			var final_intensity = lerp(base_intensity, base_intensity * 0.9, water_darkening)
-			tint = Color(final_intensity, final_intensity, final_intensity)
+			var gray = lerp(0.7, 1.2, noise_val)  # normal range
+			tint = Color(gray, gray, gray)
 	
 	# Apply tint to the tile
 	var tile_data = tile_map.get_cell_tile_data(pos)
