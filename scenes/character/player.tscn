@@ -8,7 +8,8 @@
 [ext_resource type="AudioStream" uid="uid://cfwvqbq1e4itl" path="res://assets/sfx/swing.ogg" id="5_xs70q"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_khhcq"]
-height = 20.0
+height = 60.0
+radius = 30.0
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_cdkds"]
 radius = 16.0
