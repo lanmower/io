@@ -34,22 +34,42 @@ var circling_direction := 1  # 1 for clockwise, -1 for counter-clockwise
 var circle_radius := 100.0   # How far from player to circle
 var circle_speed_modifier := 0.7  # Adjust this to control circling speed
 
+@onready var anim_player = $AnimationPlayer
+@onready var footsteps_player = $FootstepsAudioPlayer
+
 func _ready():
 	# Randomly choose initial circling direction
 	circling_direction = 1 if randf() > 0.5 else -1
+	# Verify audio setup
+	print("Enemy audio setup - FootstepsAudioPlayer volume: ", footsteps_player.volume_db)
+	print("Enemy audio setup - FootstepsAudioPlayer bus: ", footsteps_player.bus)
 
 func _process(_delta):
-	if !multiplayer.is_server():
-		return
-	if is_instance_valid(targetPlayer):
-		rotateToTarget()
-		if position.distance_to(targetPlayer.position) > attackRange:
-			move_towards_position()
+	if multiplayer.is_server():
+		if is_instance_valid(targetPlayer):
+			rotateToTarget()
+			if position.distance_to(targetPlayer.position) > attackRange:
+				move_towards_position()
+			else:
+				circle_target()
+				tryAttack()
 		else:
-			circle_target()
-			tryAttack()
+			die(false)
+	
+	# Handle animations based on actual velocity
+	update_animation_state()
+
+func update_animation_state():
+	var is_moving = velocity.length() > 10.0  # Small threshold to account for floating point imprecision
+	
+	if is_moving:
+		if !anim_player.is_playing() or anim_player.current_animation != "walking":
+			print("Enemy starting to walk, velocity: ", velocity.length())
+			anim_player.play("walking")
 	else:
-		die(false)
+		if anim_player.current_animation == "walking":
+			print("Enemy stopping walk animation")
+			anim_player.stop()
 
 func rotateToTarget():
 	$MovingParts.look_at(targetPlayer.position)
@@ -58,8 +78,6 @@ func move_towards_position():
 	var direction = (targetPlayer.position - position).normalized()
 	velocity = direction * speed
 	move_and_slide()
-	if !$AnimationPlayer.is_playing() or $AnimationPlayer.current_animation != "walking":
-		$AnimationPlayer.play("walking")
 
 func tryAttack():
 	if multiplayer.is_server() and $AttackCooldown.is_stopped():
@@ -112,9 +130,6 @@ func circle_target():
 	
 	velocity = circle_direction.normalized() * speed * circle_speed_modifier
 	move_and_slide()
-	
-	if !$AnimationPlayer.is_playing() or $AnimationPlayer.current_animation != "walking":
-		$AnimationPlayer.play("walking")
 	
 	# Randomly change direction sometimes
 	if randf() < 0.01:  # 1% chance per frame to change direction

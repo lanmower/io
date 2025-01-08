@@ -141,8 +141,9 @@ func sendInputstwo(data):
 
 @rpc("any_peer", "call_local", "reliable")
 func moveServer(vel, angle, doingAction):
+	velocity = vel  # Set velocity for animation state
 	$MovingParts.rotation = angle
-	handleAnims(vel,doingAction)
+	handleAnims(vel, doingAction)
 
 @rpc("any_peer", "call_local", "reliable")
 func sendPos(pos):
@@ -153,18 +154,19 @@ func moveProcess(vel, angle, doingAction):
 	if velocity != Vector2.ZERO:
 		move_and_slide()
 	$MovingParts.rotation = angle
-	handleAnims(vel,doingAction)
+	handleAnims(vel, doingAction)
 
 func handleAnims(vel, doing_action):
 	if doing_action:
 		var action_anim = Items.equips[equippedItem]["attack"] if equippedItem else "punching"
 		if !$AnimationPlayer.is_playing() or $AnimationPlayer.current_animation != action_anim:
 			$AnimationPlayer.play(action_anim)
-	elif vel != Vector2.ZERO:
+	elif vel.length() > 10.0:  # Small threshold to account for floating point imprecision
 		if !$AnimationPlayer.is_playing() or $AnimationPlayer.current_animation != "walking":
 			$AnimationPlayer.play("walking")
 	else:
-		$AnimationPlayer.stop()
+		if $AnimationPlayer.current_animation == "walking":
+			$AnimationPlayer.stop()
 
 func _on_next_item():
 	inventory.nextSelection()

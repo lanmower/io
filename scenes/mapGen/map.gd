@@ -178,20 +178,33 @@ func connect_two_islands(island1: Array, island2: Array) -> void:
 	if point1 == null or point2 == null:
 		return
 	
-	# Create natural-looking land bridges with varying width
+	# Create wider land bridges with multiple paths
 	var path_points = []
 	var current = point1
 	var target = point2
 	
-	# Generate main path points
+	# Generate main path points with diagonal movement
 	while current != target:
 		path_points.append(current)
 		var dx = sign(target.x - current.x)
 		var dy = sign(target.y - current.y)
-		if dx != 0:
-			current = Vector2i(current.x + dx, current.y)
-		elif dy != 0:
-			current = Vector2i(current.x, current.y + dy)
+		
+		# Allow diagonal movement for more natural paths
+		if dx != 0 and dy != 0:
+			# Randomly choose whether to move diagonally or in a single direction
+			if randf() > 0.5:
+				current = Vector2i(current.x + dx, current.y + dy)
+			else:
+				# Move in either x or y direction randomly
+				if randf() > 0.5:
+					current = Vector2i(current.x + dx, current.y)
+				else:
+					current = Vector2i(current.x, current.y + dy)
+		else:
+			if dx != 0:
+				current = Vector2i(current.x + dx, current.y)
+			elif dy != 0:
+				current = Vector2i(current.x, current.y + dy)
 	path_points.append(target)
 	
 	# Create natural-looking land with noise-based width variation
@@ -202,41 +215,43 @@ func connect_two_islands(island1: Array, island2: Array) -> void:
 	for y in range(map_height):
 		for x in range(map_width):
 			var pos = Vector2i(x, y)
-			var cell_data = tile_map.get_cell_atlas_coords(pos)  # Remove layer parameter
+			var cell_data = tile_map.get_cell_atlas_coords(pos)
 			terrain_data[pos] = "water"
 			noise_data[pos] = noise.get_noise_2d(x * 0.1, y * 0.1)
 			
-			# Check if it's grass based on the actual tile
 			if grassAtlasCoords.has(cell_data):
 				terrain_data[pos] = "grass"
 			elif sandCoords.has(cell_data):
 				terrain_data[pos] = "sand"
 	
-	# Add new land bridge
+	# Add new land bridge with increased width
 	for path_idx in range(path_points.size()):
 		var point = path_points[path_idx]
 		# Calculate progress along the path (0 to 1)
 		var progress = float(path_idx) / (path_points.size() - 1)
-		# Width varies based on position - wider at ends, narrower in middle
-		var base_radius = lerp(6.0, 4.0, sin(progress * PI))  # Increased width range
+		# Width varies based on position - significantly wider throughout
+		var base_radius = lerp(8.0, 6.0, sin(progress * PI))  # Increased width range
 		
 		# Add noise to the radius
 		var radius_noise = noise.get_noise_2d(point.x * 0.1, point.y * 0.1)
-		var radius = int(base_radius + radius_noise * 2)
+		var radius = int(base_radius + radius_noise * 3)  # Increased noise influence
 		
-		# Create an elliptical shape around the path point
+		# Create a wider elliptical shape around the path point
 		for dx in range(-radius, radius + 1):
 			for dy in range(-radius, radius + 1):
 				var check_point = Vector2i(point.x + dx, point.y + dy)
 				# Use elliptical distance check for more natural shape
-				var dist = sqrt(pow(dx / base_radius, 2) + pow(dy / (base_radius * 0.7), 2))
+				var dist = sqrt(pow(dx / base_radius, 2) + pow(dy / (base_radius * 0.8), 2))
 				if dist <= 1.0 and is_valid_tile_position(check_point):
+					# Add some randomness to the edges
+					if dist > 0.8 and randf() > 0.7:  # 30% chance to skip edge tiles for natural look
+						continue
 					terrain_data[check_point] = "grass"
 					if not walkable_tiles.has(check_point):
 						walkable_tiles.append(check_point)
-					tile_map.set_cell(check_point, tileset_source, grassAtlasCoords.pick_random(), 0)  # Set grass
+					tile_map.set_cell(check_point, tileset_source, grassAtlasCoords.pick_random(), 0)
 	
-	# Generate beaches for the new land
+	# Generate beaches for the new land with wider beach areas
 	generate_beaches(terrain_data, noise_data)
 
 func is_valid_tile_position(pos: Vector2i) -> bool:

@@ -272,6 +272,9 @@ properties/6/replication_mode = 2
 properties/7/path = NodePath(".:attackDamage")
 properties/7/spawn = true
 properties/7/replication_mode = 2
+properties/8/path = NodePath(".:velocity")
+properties/8/spawn = true
+properties/8/replication_mode = 2
 
 [sub_resource type="Curve" id="Curve_s5j1r"]
 _data = [Vector2(0.00279329, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]

@@ -47,6 +47,12 @@ properties/3/replication_mode = 2
 properties/4/path = NodePath("..:enemyId")
 properties/4/spawn = true
 properties/4/replication_mode = 2
+properties/5/path = NodePath("..:velocity")
+properties/5/spawn = true
+properties/5/replication_mode = 2
+properties/6/path = NodePath("../AnimationPlayer:current_animation")
+properties/6/spawn = true
+properties/6/replication_mode = 2
 
 [sub_resource type="Curve" id="Curve_popii"]
 _data = [Vector2(0.00279329, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
@@ -81,7 +87,7 @@ shape = SubResource("CircleShape2D_m76gk")
 [node name="NavigationAgent2D" type="NavigationAgent2D" parent="."]
 
 [node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="."]
-root_path = NodePath("../NavigationAgent2D")
+root_path = NodePath("..")
 replication_config = SubResource("SceneReplicationConfig_tx4kn")
 
 [node name="AttackCooldown" type="Timer" parent="."]
