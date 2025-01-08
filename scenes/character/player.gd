@@ -36,7 +36,7 @@ var equippedItem : String:
 		$PlayerUi.setHPBarRatio(hp/maxHP)
 		if hp <= 0:
 			die()
-@export var base_speed := 250
+@export var base_speed := 167
 @export var speed := base_speed
 var stamina: float = Constants.MAX_STAMINA
 var is_running: bool = false
