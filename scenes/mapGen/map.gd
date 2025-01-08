@@ -5,7 +5,7 @@ var grassAtlasCoords = [Vector2i(0,0),Vector2i(1,0),Vector2i(2,0),Vector2i(3,0),
 var waterCoors = [Vector2i(18,0), Vector2i(19,0)]
 var sandCoords = [Vector2i(4,0), Vector2i(5,0)]
 var cementCoords = [Vector2i(6,0), Vector2i(7,0), Vector2i(8,0), Vector2i(9,0)]
-var wallCoords = [Vector2i(9,13)]
+var wallCoords = [Vector2i(8,12)]
 var noise = FastNoiseLite.new()
 var tileset_source = 1
 # Noise parameters
@@ -23,46 +23,68 @@ func _ready():
 	noise.fractal_octaves = 4
 	noise.fractal_lacunarity = 2.0
 	noise.frequency = 0.02
+	
+	# Only generate map on server or in single player
+	if multiplayer.is_server():
+		generateMap()
 
 func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
+	# Only server should set tiles initially
+	if !multiplayer.is_server():
+		return
+		
 	# Set the base tile
 	tile_map.set_cell(pos, tileset_source, atlas_coords)
 	
-	# Use the raw noise value (before threshold) to determine tint
+	# Get the exact same noise value used for terrain generation
 	var noise_val = noise.get_noise_2d(pos.x, pos.y)
-	# Convert from -1 to 1 range to 0 to 1 range
-	noise_val = (noise_val + 1.0) * 0.5
 	
-	# Calculate tint based on tile type with doubled variation
+	# Calculate tint based on terrain height
 	var tint = Color.WHITE
 	match tile_type:
 		"grass":
-			# Darker in valleys (low noise), brighter on peaks (high noise)
+			# Use noise value for terrain-based variation
+			# Convert from -1,1 to 0,1 range and enhance contrast
+			var height_factor = pow((noise_val + 1.0) * 0.5, 0.7)  # Power less than 1 enhances darker areas
 			tint = Color(
-				lerp(0.3, 1.7, noise_val),  # red
-				lerp(0.5, 1.9, noise_val),  # green (more range for grass)
-				lerp(0.3, 1.7, noise_val)   # blue
+				lerp(0.5, 1.3, height_factor),  # red - strong variation
+				lerp(0.6, 1.4, height_factor),  # green - strongest variation for grass
+				lerp(0.5, 1.3, height_factor)   # blue - strong variation
 			)
 		"water":
-			# Deeper water (low noise) is darker and more saturated
+			# More visible water depth variation
+			var depth_factor = pow((-noise_val + 1.0) * 0.5, 1.3)  # Power greater than 1 enhances deeper areas
 			tint = Color(
-				lerp(0.3, 1.1, noise_val),  # red
-				lerp(0.3, 1.3, noise_val),  # green
-				lerp(0.9, 1.9, noise_val)   # blue (more range for water)
+				lerp(0.9, 0.3, depth_factor),  # red - dramatic darkening in deep water
+				lerp(0.9, 0.3, depth_factor),  # green - dramatic darkening in deep water
+				lerp(1.1, 0.6, depth_factor)   # blue - maintain water feel with strong depth variation
 			)
 		"sand":
-			# Sand near water (low noise) is darker
+			# More visible sand height variation
+			var height_factor = pow((noise_val + 1.0) * 0.5, 0.8)  # Slightly enhance lower areas
 			tint = Color(
-				lerp(0.5, 1.9, noise_val),  # red (more range for sand)
-				lerp(0.4, 1.8, noise_val),  # green
-				lerp(0.2, 1.6, noise_val)   # blue
+				lerp(0.6, 1.2, height_factor),  # red - strong variation
+				lerp(0.5, 1.1, height_factor),  # green - moderate variation
+				lerp(0.4, 1.0, height_factor)   # blue - less variation
 			)
 		"cement":
-			# Cement structures follow terrain contours
-			var gray = lerp(0.3, 1.7, noise_val)
+			# More visible cement height variation
+			var height_factor = pow((noise_val + 1.0) * 0.5, 0.9)
+			var gray = lerp(0.6, 1.3, height_factor)  # Increased contrast
 			tint = Color(gray, gray, gray)
 	
 	# Apply tint to the tile
+	var tile_data = tile_map.get_cell_tile_data(pos)
+	if tile_data:
+		tile_data.modulate = tint
+		
+	# Synchronize the tile to clients
+	sync_tile.rpc(pos, atlas_coords, tint)
+
+@rpc("authority", "call_remote", "reliable")
+func sync_tile(pos: Vector2i, atlas_coords: Vector2i, tint: Color):
+	# Clients receive the tile data from server
+	tile_map.set_cell(pos, tileset_source, atlas_coords)
 	var tile_data = tile_map.get_cell_tile_data(pos)
 	if tile_data:
 		tile_data.modulate = tint
