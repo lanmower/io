@@ -17,41 +17,44 @@ var walkable_tiles = []
 @onready var tile_map = $TileMap
 
 func _ready():
-	# Initialize noise for tinting
-	noise.seed = Multihelper.mapSeed + 500
-	noise.frequency = 0.1  # Increased frequency for more variation
+	# Initialize noise for tinting - use same settings as terrain generation
+	noise.seed = Multihelper.mapSeed
+	noise.noise_type = FastNoiseLite.TYPE_PERLIN
+	noise.fractal_octaves = 4
+	noise.fractal_lacunarity = 2.0
+	noise.frequency = 0.02
 
 func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
 	# Set the base tile
 	tile_map.set_cell(pos, tileset_source, atlas_coords)
 	
-	# Use the same noise settings as terrain generation
+	# Use the same noise value that generates the terrain
 	var noise_val = noise.get_noise_2d(pos.x, pos.y)
 	noise_val = (noise_val + 1.0) * 0.5  # Convert to 0-1 range
 	
-	# Calculate tint based on tile type
+	# Calculate tint based on tile type with doubled variation
 	var tint = Color.WHITE
 	match tile_type:
 		"grass":
 			tint = Color(
-				lerp(0.6, 1.2, noise_val),  # red (doubled from 0.8-1.1)
-				lerp(0.8, 1.4, noise_val),  # green (doubled from 1.0-1.2)
-				lerp(0.6, 1.2, noise_val)   # blue (doubled from 0.8-1.0)
+				lerp(0.4, 1.4, noise_val),  # red (doubled range)
+				lerp(0.6, 1.6, noise_val),  # green (doubled range)
+				lerp(0.4, 1.4, noise_val)   # blue (doubled range)
 			)
 		"water":
 			tint = Color(
-				lerp(0.7, 1.1, noise_val),  # red (doubled from 0.8-0.9)
-				lerp(0.7, 1.3, noise_val),  # green (doubled from 0.8-1.0)
-				lerp(0.9, 1.5, noise_val)   # blue (doubled from 1.1-1.3)
+				lerp(0.5, 1.3, noise_val),  # red (doubled range)
+				lerp(0.5, 1.5, noise_val),  # green (doubled range)
+				lerp(0.7, 1.7, noise_val)   # blue (doubled range)
 			)
 		"sand":
 			tint = Color(
-				lerp(0.8, 1.4, noise_val),  # red (doubled from 1.0-1.2)
-				lerp(0.7, 1.3, noise_val),  # green (doubled from 0.9-1.1)
-				lerp(0.5, 1.1, noise_val)   # blue (doubled from 0.7-0.9)
+				lerp(0.6, 1.6, noise_val),  # red (doubled range)
+				lerp(0.5, 1.5, noise_val),  # green (doubled range)
+				lerp(0.3, 1.3, noise_val)   # blue (doubled range)
 			)
 		"cement":
-			var gray = lerp(0.7, 1.3, noise_val)  # doubled from 0.9-1.1
+			var gray = lerp(0.5, 1.5, noise_val)  # doubled range
 			tint = Color(gray, gray, gray)
 	
 	# Apply tint to the tile
