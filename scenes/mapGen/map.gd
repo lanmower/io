@@ -20,9 +20,9 @@ func _ready():
 	# Initialize noise for terrain generation
 	noise.seed = Multihelper.mapSeed
 	noise.noise_type = FastNoiseLite.TYPE_PERLIN
-	noise.fractal_octaves = 4
+	noise.fractal_octaves = 1  # Single octave for clearer variation
 	noise.fractal_lacunarity = 2.0
-	noise.frequency = 0.02
+	noise.frequency = 0.1  # Higher frequency for more visible patterns
 	
 	# Generate map on server, or if we're the client wait for server data
 	if multiplayer.is_server():
@@ -32,81 +32,58 @@ func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
 	# Set the base tile
 	tile_map.set_cell(pos, tileset_source, atlas_coords)
 	
-	# Calculate distance to water for coastal slopes
-	var water_influence = 0.0
-	var max_water_distance = 8
+	# Quick water check for darkening near water
+	var water_darkening = 0.0
+	var water_radius = 3
 	
-	if tile_type != "water":
-		# Check surrounding tiles for water
-		for dx in range(-max_water_distance, max_water_distance + 1):
-			for dy in range(-max_water_distance, max_water_distance + 1):
-				var check_pos = Vector2i(pos.x + dx, pos.y + dy)
-				if check_pos.x >= 0 and check_pos.x < map_width and check_pos.y >= 0 and check_pos.y < map_height:
-					var cell = tile_map.get_cell_atlas_coords(check_pos)
-					if waterCoors.has(cell):
-						var distance = Vector2(dx, dy).length()
-						if distance <= max_water_distance:
-							water_influence = max(water_influence, pow(1.0 - (distance / max_water_distance), 1.5))
+	for dx in range(-water_radius, water_radius + 1, 2):
+		for dy in range(-water_radius, water_radius + 1, 2):
+			var check_pos = Vector2i(pos.x + dx, pos.y + dy)
+			if check_pos.x >= 0 and check_pos.x < map_width and check_pos.y >= 0 and check_pos.y < map_height:
+				var cell = tile_map.get_cell_atlas_coords(check_pos)
+				if waterCoors.has(cell):
+					var distance = Vector2(dx, dy).length()
+					if distance <= water_radius:
+						water_darkening = max(water_darkening, 1.0 - (distance / water_radius))
 	
-	# Calculate elevation using multiple noise layers
-	var base_elevation = noise.get_noise_2d(pos.x * 0.02, pos.y * 0.02)
-	var detail_elevation = noise.get_noise_2d(pos.x * 0.04, pos.y * 0.04) * 0.3
-	var elevation = base_elevation + detail_elevation
-	
-	# Create coastal slopes
-	var coastal_height = lerp(elevation, -0.8, water_influence)
-	var height_factor = (coastal_height + 1.0) * 0.5
-	
-	# Calculate slope intensity
-	var slope_intensity = 0.0
-	for offset in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]:
-		var neighbor_pos = pos + offset
-		if neighbor_pos.x >= 0 and neighbor_pos.x < map_width and neighbor_pos.y >= 0 and neighbor_pos.y < map_height:
-			var neighbor_height = noise.get_noise_2d(neighbor_pos.x * 0.02, neighbor_pos.y * 0.02)
-			slope_intensity = max(slope_intensity, abs(elevation - neighbor_height))
-	
-	# Calculate tint based on height and slope
+	# Calculate tint based on noise and water proximity
 	var tint = Color.WHITE
 	match tile_type:
 		"grass":
-			# Stronger base colors for grass
-			var base_green = lerp(1.0, 1.4, height_factor)  # More vibrant green base
-			var shadow_intensity = lerp(0.7, 1.1, height_factor)  # Less extreme shadows
-			var slope_shadow = lerp(1.0, 0.85, slope_intensity)  # Subtle slope darkening
-			var coastal_shadow = lerp(1.0, 0.9, water_influence)  # Subtle coastal darkening
+			# Get raw noise value
+			var noise_val = noise.get_noise_2d(pos.x * 0.1, pos.y * 0.1)
+			# Convert from -1,1 to 0,1 range and add variation
+			var normalized_noise = (noise_val + 1.0) * 0.5
 			
-			# Combine factors with stronger base colors
-			var final_intensity = shadow_intensity * slope_shadow * coastal_shadow
+			# Create more dramatic variation in the base intensity
+			var base_intensity = lerp(0.7, 1.2, normalized_noise)
+			var final_intensity = lerp(base_intensity, base_intensity * 0.8, water_darkening)
+			
 			tint = Color(
-				lerp(0.8, 1.0, final_intensity),     # Red - more muted
-				base_green * final_intensity,         # Green - more pronounced
-				lerp(0.7, 0.9, final_intensity)      # Blue - more muted
+				final_intensity * 0.8,  # Reduced red
+				final_intensity * 1.1,  # Enhanced green
+				final_intensity * 0.7   # Reduced blue
 			)
 		"water":
-			var depth = (-base_elevation + 1.0) * 0.5
 			tint = Color(
-				lerp(0.8, 0.6, depth),  # Brighter water
-				lerp(0.8, 0.6, depth),
-				lerp(1.1, 0.8, depth)   # More intense blue
+				0.6,
+				0.6,
+				0.9
 			)
 		"sand":
-			# Brighter sand with subtle shading
-			var beach_height = lerp(height_factor, 0.4, water_influence * 0.5)
-			var sand_shadow = lerp(1.0, 0.9, slope_intensity)
-			
-			var sand_intensity = beach_height * sand_shadow
+			var noise_val = noise.get_noise_2d(pos.x * 0.05, pos.y * 0.05)
+			var base_intensity = lerp(0.8, 1.1, (noise_val + 1.0) * 0.5)
+			var final_intensity = lerp(base_intensity, base_intensity * 0.8, water_darkening)
 			tint = Color(
-				lerp(1.0, 1.2, sand_intensity),    # Brighter sand
-				lerp(0.95, 1.15, sand_intensity),  # Slightly yellow tint
-				lerp(0.8, 1.0, sand_intensity)     # Darker blue for contrast
+				final_intensity,
+				final_intensity * 0.9,
+				final_intensity * 0.7
 			)
 		"cement":
-			# More visible cement with subtle weathering
-			var cement_shadow = lerp(1.0, 0.85, slope_intensity)
-			var weathering = water_influence * 0.2
-			var base_gray = lerp(1.1, 0.9, weathering) * cement_shadow
-			
-			tint = Color(base_gray, base_gray, base_gray)
+			var noise_val = noise.get_noise_2d(pos.x * 0.05, pos.y * 0.05)
+			var base_intensity = lerp(0.8, 1.0, (noise_val + 1.0) * 0.5)
+			var final_intensity = lerp(base_intensity, base_intensity * 0.9, water_darkening)
+			tint = Color(final_intensity, final_intensity, final_intensity)
 	
 	# Apply tint to the tile
 	var tile_data = tile_map.get_cell_tile_data(pos)
@@ -116,6 +93,32 @@ func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
 	# If we're the server, synchronize to clients
 	if multiplayer.is_server():
 		sync_tile.rpc(pos, atlas_coords, tint)
+
+func get_height_at(pos: Vector2i) -> float:
+	if pos.x < 0 or pos.x >= map_width or pos.y < 0 or pos.y >= map_height:
+		return 0.0
+		
+	var cell = tile_map.get_cell_atlas_coords(pos)
+	if waterCoors.has(cell):
+		return 0.0
+		
+	# Find nearest water
+	var max_distance = 6
+	var min_dist = max_distance
+	
+	for dx in range(-max_distance, max_distance + 1):
+		for dy in range(-max_distance, max_distance + 1):
+			var check_pos = pos + Vector2i(dx, dy)
+			if check_pos.x >= 0 and check_pos.x < map_width and check_pos.y >= 0 and check_pos.y < map_height:
+				var check_cell = tile_map.get_cell_atlas_coords(check_pos)
+				if waterCoors.has(check_cell):
+					var dist = Vector2(dx, dy).length()
+					min_dist = min(min_dist, dist)
+	
+	if min_dist < max_distance:
+		var t = float(min_dist) / max_distance
+		return lerp(0.0, 1.0, pow(t, 0.7))
+	return 1.0
 
 @rpc("authority", "call_remote", "reliable")
 func sync_tile(pos: Vector2i, atlas_coords: Vector2i, tint: Color):
@@ -130,13 +133,7 @@ func sync_walkable_tiles(tiles: Array):
 	walkable_tiles = tiles
 
 func generateMap():
-	# Initialize main terrain noise
-	noise.seed = Multihelper.mapSeed
-	noise.noise_type = FastNoiseLite.TYPE_PERLIN
-	noise.fractal_octaves = 4
-	noise.fractal_lacunarity = 2.0
-	noise.frequency = 0.02
-	
+	# Use the noise settings already initialized in _ready()
 	generate_terrain()
 	
 	# If we're the server, sync walkable tiles to clients
