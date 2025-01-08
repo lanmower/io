@@ -152,6 +152,12 @@ func spawnPlayer(playerName, id, characterFile):
 	newPlayer.characterFile = characterFile
 	newPlayer.name = str(id)
 	main.get_node("Players").add_child(newPlayer)
+	
+	# Check if this is the first player and handle map reset
+	if multiplayer.is_server():
+		var is_first_player = spawnedPlayers.size() == 1
+		main.get_node("Map").handle_player_spawn(is_first_player)
+	
 	newPlayer.sendPos.rpc(map.tile_map.map_to_local(map.walkable_tiles.pick_random()))
 
 @rpc("any_peer", "call_remote", "reliable")

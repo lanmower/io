@@ -27,6 +27,7 @@ func _ready():
 		setupServerCamera()
 	$dayNight.time_tick.connect(_on_time_tick)
 	$dayNight.time_tick.connect(%DayNightCycleUI.set_daytime)
+	$Map.map_reset.connect(_on_map_reset)
 	createHUD()
 
 func _on_time_tick(day: int, hour: int, _minute: int):
@@ -145,3 +146,18 @@ func decreasePlayerEnemyCount(pId) -> void:
 func _on_enemy_spawn_timer_timeout():
 	if multiplayer.is_server():
 		trySpawnEnemies()
+
+func _on_map_reset():
+	if multiplayer.is_server():
+		current_day = 0
+		boss_spawned = false
+		# Clear all enemies
+		for enemy in $Enemies.get_children():
+			enemy.queue_free()
+		spawnedEnemies.clear()
+		# Clear all objects
+		for object in $Objects.get_children():
+			object.queue_free()
+		spawnedObjects = 0
+		# Spawn initial objects
+		spawnObjects(initialSpawnObjects)
