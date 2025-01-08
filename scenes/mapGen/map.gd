@@ -68,40 +68,42 @@ func generate_beaches(terrain_data: Dictionary, noise_data: Dictionary) -> void:
 	# Add sand borders with varying width based on noise
 	var max_beach_width = 3  # Maximum possible beach width
 	
+	# Create a separate noise for beach width variation
+	var beach_noise = FastNoiseLite.new()
+	beach_noise.seed = noise.seed + 1  # Different seed for variety
+	beach_noise.frequency = 0.1  # Lower frequency for smoother transitions
+	
 	for y in range(map_height):
 		for x in range(map_width):
 			var pos = Vector2i(x, y)
 			if terrain_data[pos] == "grass":
-				# Use noise to determine beach width at this position
-				var width_noise = abs(noise.get_noise_2d(x * 0.2, y * 0.2))
-				var local_beach_width = int(width_noise * max_beach_width) + 1
-				
 				# Check for water in expanding radius
 				var has_water = false
-				var water_distance = INF
+				var closest_water_dist = INF
 				
-				# Search in the local beach width radius
-				for radius in range(1, local_beach_width + 1):
+				# Check in maximum radius for water
+				for radius in range(1, max_beach_width + 1):
 					for dx in range(-radius, radius + 1):
 						for dy in range(-radius, radius + 1):
 							if abs(dx) == radius or abs(dy) == radius:  # Check only the outer ring
 								var check_pos = Vector2i(x + dx, y + dy)
 								if check_pos.x >= 0 and check_pos.x < map_width and \
 								   check_pos.y >= 0 and check_pos.y < map_height:
-									var check_type = terrain_data.get(check_pos, "")
-									if check_type == "water":
+									if terrain_data.get(check_pos, "") == "water":
 										var dist = Vector2(dx, dy).length()
-										if dist < water_distance:
-											water_distance = dist
+										if dist < closest_water_dist:
+											closest_water_dist = dist
 											has_water = true
 				
-				# Convert to beach if close enough to water and passes noise check
-				if has_water and water_distance <= local_beach_width:
-					# Add some noise-based randomness to beach placement
-					var beach_noise = noise.get_noise_2d(x * 0.3, y * 0.3)
-					var beach_threshold = lerp(0.1, -0.1, water_distance / local_beach_width)
+				# If we found water within range, consider making this a beach
+				if has_water and closest_water_dist <= max_beach_width:
+					# Use noise to determine beach width at this position
+					var width_noise = (beach_noise.get_noise_2d(x * 0.1, y * 0.1) + 1) * 0.5  # Range 0 to 1
+					var local_beach_width = width_noise * max_beach_width
 					
-					if beach_noise > beach_threshold:
+					# Add randomness for gaps (about 15% chance of no beach)
+					var gap_noise = beach_noise.get_noise_2d(x * 0.3, y * 0.3)
+					if gap_noise > -0.7 and closest_water_dist <= local_beach_width:  # -0.7 gives ~15% chance of gaps
 						terrain_data[pos] = "sand"
 						tile_map.set_cell(pos, tileset_source, sandCoords.pick_random(), 0)
 						if not walkable_tiles.has(pos):
