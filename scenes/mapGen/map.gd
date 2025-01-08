@@ -273,35 +273,34 @@ func generate_cement_areas(terrain_data: Dictionary) -> void:
 			if valid:
 				valid_positions.append(pos)
 	
-	# Generate cement areas, allowing and encouraging overlaps
+	# Generate cement areas with occasional overlaps
 	for _i in range(num_cement_areas):
 		var width = randi_range(4, 12)
 		var height = randi_range(4, 12)
 		
-		# Try to place near existing regions with 70% probability if there are any
+		# 30% chance to try to overlap with existing building
 		var pos: Vector2i
-		if cement_regions.size() > 0 and randf() < 0.7:
+		if cement_regions.size() > 0 and randf() < 0.3:
 			# Pick a random existing region
 			var existing_region = cement_regions.pick_random()
-			# Generate position near the existing region
+			# Generate position near the existing region with some randomness
 			var offset_x = randi_range(-width, existing_region.size.x)
 			var offset_y = randi_range(-height, existing_region.size.y)
 			pos = Vector2i(
 				existing_region.position.x + offset_x,
 				existing_region.position.y + offset_y
 			)
-			# Clamp to valid range
-			pos.x = clamp(pos.x, 10, map_width - width - 10)
-			pos.y = clamp(pos.y, 10, map_height - height - 10)
 		else:
-			# Place randomly if no existing regions or 30% chance
+			# Place in a new area
 			var valid_pos = valid_positions.pick_random()
 			pos = Vector2i(
 				valid_pos.x - width/2,
 				valid_pos.y - height/2
 			)
-			pos.x = clamp(pos.x, 10, map_width - width - 10)
-			pos.y = clamp(pos.y, 10, map_height - height - 10)
+		
+		# Ensure position is within valid range
+		pos.x = clamp(pos.x, 10, map_width - width - 10)
+		pos.y = clamp(pos.y, 10, map_height - height - 10)
 		
 		var region = Rect2i(pos.x, pos.y, width, height)
 		
