@@ -7,6 +7,9 @@ const maxObjects := Constants.MAX_OBJECTS
 const objectWaveCount := 10
 var spawnedObjects := 0
 
+#server camera
+const SERVER_CAMERA_ZOOM := Vector2(0.1, 0.1)
+
 #enemies
 var enemyTypes := Items.mobs.keys()
 const enemyWaveCount := 1
@@ -20,8 +23,16 @@ func _ready():
 		Multihelper.loadMap()
 		spawnObjects(initialSpawnObjects)
 		$HUD.queue_free()
+		setupServerCamera()
 	$dayNight.time_tick.connect(%DayNightCycleUI.set_daytime)
 	createHUD()
+
+func setupServerCamera():
+	var camera := Camera2D.new()
+	camera.enabled = true
+	camera.zoom = SERVER_CAMERA_ZOOM
+	camera.position = Vector2(Constants.MAP_SIZE * 64) / 2
+	add_child(camera)
 
 func createHUD():
 	var hudScene := preload("res://scenes/ui/playersList/generalHud.tscn")
