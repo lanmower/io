@@ -55,21 +55,47 @@ func createHUD():
 func spawnObjects(amount):
 	var breakableScene := preload("res://scenes/object/breakable.tscn")
 	var spawnedThisWave := 0
-	for i in range(amount):
-		var spawnPos = $Map.tile_map.map_to_local($Map.walkable_tiles.pick_random())
-		var breakable := breakableScene.instantiate()
-		var objectId = Items.objects.keys().pick_random()
-		$Objects.add_child(breakable,true)
-		breakable.objectId = objectId
-		breakable.position = spawnPos
-		breakable.spawner = self
-		spawnedObjects += 1
-		spawnedThisWave += 1
+	
+	# Filter walkable tiles to exclude those too close to water
+	var valid_spawn_tiles = []
+	var water_check_radius = 2  # Minimum tiles away from water
+	
+	for tile in $Map.walkable_tiles:
+		var is_valid = true
+		# Check surrounding area for water
+		for dx in range(-water_check_radius, water_check_radius + 1):
+			for dy in range(-water_check_radius, water_check_radius + 1):
+				var check_pos = Vector2i(tile.x + dx, tile.y + dy)
+				if check_pos.x >= 0 and check_pos.x < $Map.map_width and check_pos.y >= 0 and check_pos.y < $Map.map_height:
+					var cell = $Map.tile_map.get_cell_atlas_coords(check_pos)
+					if $Map.waterCoors.has(cell):
+						is_valid = false
+						break
+			if not is_valid:
+				break
+		if is_valid:
+			valid_spawn_tiles.append(tile)
+	
+	# Only spawn if we have valid tiles
+	if valid_spawn_tiles.size() > 0:
+		for i in range(amount):
+			var spawnTile = valid_spawn_tiles.pick_random()
+			var spawnPos = $Map.tile_map.map_to_local(spawnTile)
+			var breakable := breakableScene.instantiate()
+			var objectId = Items.objects.keys().pick_random()
+			$Objects.add_child(breakable,true)
+			breakable.objectId = objectId
+			breakable.position = spawnPos
+			breakable.spawner = self
+			spawnedObjects += 1
+			spawnedThisWave += 1
+	
 	return spawnedThisWave
 
 func trySpawnObjectWave():
 	if spawnedObjects < maxObjects:
 		var toMax := maxObjects - spawnedObjects
+		
 		spawnObjects(min(objectWaveCount, toMax))
 
 func _on_object_spawn_timer_timeout():
