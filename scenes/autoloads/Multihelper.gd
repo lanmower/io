@@ -87,6 +87,8 @@ func _register_character(new_player_info):
 		# Reset day and clear objects/enemies
 		main.current_day = 0
 		main.boss_spawned = false
+		# Reset the day/night cycle
+		main.get_node("dayNight").reset_time.rpc()
 		# Clear all enemies
 		for enemy in main.get_node("Enemies").get_children():
 			enemy.queue_free()
@@ -125,20 +127,29 @@ func load_main_game():
 @rpc("any_peer", "call_local", "reliable")
 func player_loaded():
 	var sender_id = multiplayer.get_remote_sender_id()
-	#print("remote sender:"+str(sender_id))
 	main = game.get_node("Level/Main")
+	var dayNight = main.get_node("dayNight")
 	var mapData := {
 		"seed": mapSeed,
+		"current_day": main.current_day,
+		"current_hour": dayNight.current_hour,
+		"current_minute": dayNight.current_minute
 	}
 	sendGameData.rpc_id(sender_id, spawnedPlayers, mapData)
-	#print(connectedPlayers)
 	set_process(false)
 
 @rpc("authority", "call_remote", "reliable")
 func sendGameData(playerData, mapData):
 	spawnedPlayers = playerData
 	mapSeed = mapData["seed"]
-	main = game.get_node("Level/Main")
+	main = get_node("/root/Game/Level/Main")
+	
+	# Sync time state
+	if mapData.has("current_day"):
+		main.current_day = mapData["current_day"]
+		var dayNight = main.get_node("dayNight")
+		dayNight.sync_time.rpc(mapData["current_day"], mapData["current_hour"], mapData["current_minute"])
+	
 	loadMap()
 	data_loaded.emit()
 	set_process(true)
@@ -173,46 +184,61 @@ func spawnPlayer(playerName, id, characterFile):
 	
 	# Get a valid spawn position that's definitely not water
 	var spawnPos = Vector2.ZERO
-	var attempts = 0
-	var maxAttempts = 20  # Increased attempts
 	
-	# First try: Use walkable tiles
-	while attempts < maxAttempts and spawnPos == Vector2.ZERO:
-		if map.walkable_tiles.size() > 0:
-			var candidatePos = map.walkable_tiles.pick_random()
-			var tileCoords = map.tile_map.get_cell_atlas_coords(candidatePos)
-			if map.grassAtlasCoords.has(tileCoords):  # Only spawn on grass
-				spawnPos = map.tile_map.map_to_local(candidatePos)
-		attempts += 1
+	# First try: Use walkable tiles (which should only contain grass tiles now)
+	if map.walkable_tiles.size() > 0:
+		var candidatePos = map.walkable_tiles.pick_random()
+		var tileCoords = map.tile_map.get_cell_atlas_coords(candidatePos)
+		if map.grassAtlasCoords.has(tileCoords):
+			spawnPos = map.tile_map.map_to_local(candidatePos)
 	
-	# Second try: Scan for grass tiles if walkable tiles failed
+	# Second try: Find any grass tile near the center
 	if spawnPos == Vector2.ZERO:
-		print("Warning: Failed to find spawn position from walkable tiles, scanning for grass...")
-		var centerX = map.map_width / 2
-		var centerY = map.map_height / 2
-		var radius = 1
+		print("Warning: Using center-search fallback for spawn position")
+		var center = Vector2i(map.map_width/2, map.map_height/2)
+		var found = false
 		
-		while radius < max(map.map_width, map.map_height) / 2:
-			for y in range(centerY - radius, centerY + radius + 1):
-				for x in range(centerX - radius, centerX + radius + 1):
-					if x < 0 or x >= map.map_width or y < 0 or y >= map.map_height:
-						continue
+		# Search in expanding square from center
+		for radius in range(1, 50):  # Maximum search radius of 50 tiles
+			if found: break
+			
+			# Check top and bottom rows
+			for x in range(center.x - radius, center.x + radius + 1):
+				if x < 0 or x >= map.map_width: continue
+				
+				for y in [center.y - radius, center.y + radius]:
+					if y < 0 or y >= map.map_height: continue
 					
 					var pos = Vector2i(x, y)
 					var tileCoords = map.tile_map.get_cell_atlas_coords(pos)
 					if map.grassAtlasCoords.has(tileCoords):
 						spawnPos = map.tile_map.map_to_local(pos)
+						found = true
 						break
-				if spawnPos != Vector2.ZERO:
-					break
-			if spawnPos != Vector2.ZERO:
-				break
-			radius += 1
+				if found: break
+			
+			# Check left and right columns
+			if not found:
+				for y in range(center.y - radius + 1, center.y + radius):
+					if y < 0 or y >= map.map_height: continue
+					
+					for x in [center.x - radius, center.x + radius]:
+						if x < 0 or x >= map.map_width: continue
+						
+						var pos = Vector2i(x, y)
+						var tileCoords = map.tile_map.get_cell_atlas_coords(pos)
+						if map.grassAtlasCoords.has(tileCoords):
+							spawnPos = map.tile_map.map_to_local(pos)
+							found = true
+							break
+					if found: break
 	
-	# Emergency fallback: Use a hardcoded safe position
+	# Emergency fallback: Force create a grass tile in the center
 	if spawnPos == Vector2.ZERO:
-		print("Error: Could not find valid spawn position, using emergency fallback")
-		spawnPos = map.tile_map.map_to_local(Vector2i(map.map_width/2, map.map_height/2))
+		print("Error: Emergency spawn position fallback")
+		var center = Vector2i(map.map_width/2, map.map_height/2)
+		map.set_tile(center, "grass", map.grassAtlasCoords.pick_random())
+		spawnPos = map.tile_map.map_to_local(center)
 	
 	newPlayer.sendPos.rpc(spawnPos)
 

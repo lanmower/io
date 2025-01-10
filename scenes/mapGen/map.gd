@@ -125,12 +125,16 @@ func generateMap():
 		sync_walkable_tiles.rpc(walkable_tiles)
 
 func generate_terrain():
+	# Clear walkable tiles at start
 	walkable_tiles.clear()
+	
 	var border_width = 8
 	var border_falloff = 4
 	
 	var terrain_data = {}
 	var noise_data = {}
+	
+	# First pass: Generate base terrain
 	for y in range(map_height):
 		for x in range(map_width):
 			var noise_value = noise.get_noise_2d(x, y)
@@ -156,12 +160,13 @@ func generate_terrain():
 				terrain_data[pos] = "water"
 				set_tile(pos, "water", waterCoors.pick_random())
 	
-	# Update walkable tiles after all terrain is set
+	# Second pass: Validate and add walkable tiles
 	for y in range(map_height):
 		for x in range(map_width):
 			var pos = Vector2i(x, y)
 			var tileCoords = tile_map.get_cell_atlas_coords(pos)
-			if not waterCoors.has(tileCoords):
+			# Only add if it's grass (not water, sand, or cement)
+			if grassAtlasCoords.has(tileCoords):
 				walkable_tiles.append(pos)
 	
 	generate_beaches(terrain_data, noise_data)
@@ -169,10 +174,25 @@ func generate_terrain():
 	generate_cement_areas(terrain_data)
 	
 	# Final validation of walkable tiles
-	walkable_tiles = walkable_tiles.filter(func(pos): 
+	var validated_tiles = []
+	for pos in walkable_tiles:
 		var tileCoords = tile_map.get_cell_atlas_coords(pos)
-		return not waterCoors.has(tileCoords)
-	)
+		# Strict check: only allow grass tiles
+		if grassAtlasCoords.has(tileCoords):
+			validated_tiles.append(pos)
+	walkable_tiles = validated_tiles
+	
+	# Ensure we have at least some walkable grass tiles
+	if walkable_tiles.is_empty():
+		push_error("No walkable tiles found after map generation!")
+		# Force create some grass tiles in the center
+		var center = Vector2i(map_width/2, map_height/2)
+		for dx in range(-5, 6):
+			for dy in range(-5, 6):
+				var pos = center + Vector2i(dx, dy)
+				if pos.x >= 0 and pos.x < map_width and pos.y >= 0 and pos.y < map_height:
+					set_tile(pos, "grass", grassAtlasCoords.pick_random())
+					walkable_tiles.append(pos)
 	
 	# Sync walkable tiles to clients
 	if multiplayer.is_server():
