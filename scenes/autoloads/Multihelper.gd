@@ -79,16 +79,20 @@ func _on_player_connected(id):
 @rpc("call_local" ,"any_peer", "reliable")
 func _register_character(new_player_info):
 	var new_player_id = multiplayer.get_remote_sender_id()
-	spawnedPlayers[new_player_id] = new_player_info
 	
-	# If this is the first player and we're the server, reset the game
-	if multiplayer.is_server() and spawnedPlayers.size() == 1:
+	# If there are no players and we're the server, reset the game
+	if multiplayer.is_server() and spawnedPlayers.keys().is_empty():
 		main = get_node("/root/Game/Level/Main")
-		# Reset the day/night cycle first
-		main.get_node("dayNight").reset_time.rpc()
-		await get_tree().create_timer(0.1).timeout  # Give a small delay for sync
 		
-		# Reset day and clear objects/enemies
+		# Reset the day/night cycle first and wait for it to complete
+		var dayNight = main.get_node("dayNight")
+		dayNight.current_day = 0
+		dayNight.current_hour = 6  # Start at 6 AM
+		dayNight.current_minute = 0
+		dayNight.sync_time.rpc(0, 6, 0)
+		dayNight.time_tick.emit(0, 6, 0)
+		
+		# Reset main scene state
 		main.current_day = 0
 		main.boss_spawned = false
 		
@@ -104,7 +108,12 @@ func _register_character(new_player_info):
 		
 		# Spawn initial objects
 		main.spawnObjects(main.initialSpawnObjects)
+		
+		# Give a small delay to ensure everything is synced
+		await get_tree().create_timer(0.1).timeout
 	
+	# Now register the player
+	spawnedPlayers[new_player_id] = new_player_info
 	player_spawned.emit(new_player_id, new_player_info)
 	player_registered.emit()
 
