@@ -5,7 +5,7 @@ extends Node
 const BASE_MOBS := {
 	# Regular Zombies (Tier 1) - Green tint, normal scale
 	"zombie_1": {
-		"maxhp": 40, "speed": 50, "attack": "slash_attack", "attackDamage": 4,
+		"maxhp": 40, "speed": 150, "attack": "slash_attack", "attackDamage": 4,
 		"attackRange": 50, "drops": {"wood": {"min": 1, "max": 2}},
 		"day_introduced": 1,
 		"variations": {
@@ -16,7 +16,7 @@ const BASE_MOBS := {
 	},
 	# First Boss (Tier 5) - Dark green, large
 	"zombie_brute_5": {
-		"maxhp": 300, "speed": 40, "attack": "slash_attack", "attackDamage": 15,
+		"maxhp": 300, "speed": 120, "attack": "slash_attack", "attackDamage": 15,
 		"attackRange": 60, "drops": {"wood": {"min": 5, "max": 8}, "stone": {"min": 3, "max": 5}},
 		"day_introduced": 5,
 		"is_boss": true,
@@ -28,7 +28,7 @@ const BASE_MOBS := {
 	},
 	# Spider Scout (Tier 6) - Dark blue, fast
 	"spider_6": {
-		"maxhp": 100, "speed": 120, "attack": "projectile_attack", "attackDamage": 8,
+		"maxhp": 100, "speed": 200, "attack": "projectile_attack", "attackDamage": 8,
 		"attackRange": 300, "drops": {"stone": {"min": 2, "max": 4}},
 		"day_introduced": 6,
 		"variations": {

@@ -59,8 +59,8 @@ var attackRange := 50.0
 var attackDamage := 20.0
 var drops := {}
 var circling_direction := 1  # 1 for clockwise, -1 for counter-clockwise
-var circle_radius := 100.0   # How far from player to circle
-var circle_speed_modifier := 0.7  # Adjust this to control circling speed
+var circle_radius := 40.0   # Reduced from 100.0 to stay closer
+var circle_speed_modifier := 0.5  # Reduced from 0.7 to make circling tighter
 
 @onready var anim_player = $AnimationPlayer
 @onready var footsteps_player = $FootstepsAudioPlayer
@@ -76,10 +76,16 @@ func _process(_delta):
 	if multiplayer.is_server():
 		if is_instance_valid(targetPlayer):
 			rotateToTarget()
-			if position.distance_to(targetPlayer.position) > attackRange:
+			var dist_to_target = position.distance_to(targetPlayer.position)
+			if dist_to_target > attackRange * 1.2:  # Give some buffer for attack range
 				move_towards_position()
 			else:
-				circle_target()
+				if dist_to_target < attackRange * 0.5:  # If too close, back away slightly
+					var away_dir = (position - targetPlayer.position).normalized()
+					velocity = away_dir * speed * 0.5
+					move_and_slide()
+				else:
+					circle_target()
 				tryAttack()
 		else:
 			die(false)

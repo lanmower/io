@@ -580,6 +580,9 @@ func add_fences_to_cement(terrain_data: Dictionary, cement_regions: Array) -> vo
 				if terrain_data.get(pos, "") != "cement":
 					terrain_data[pos] = "fence"  # Mark the position as fence in terrain data
 					tile_map.set_cell(pos, tileset_source, wallCoords[0])
+					# Remove fence positions from walkable tiles
+					if walkable_tiles.has(pos):
+						walkable_tiles.erase(pos)
 
 func reset_map():
 	# Clear all existing objects
