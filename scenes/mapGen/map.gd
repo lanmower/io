@@ -14,6 +14,7 @@ var map_width = Constants.MAP_SIZE.x
 var map_height = Constants.MAP_SIZE.y
 
 var walkable_tiles = []
+var terrain_data = {}  # Store terrain types for each tile
 @onready var tile_map = $TileMap
 
 signal map_reset
@@ -33,6 +34,9 @@ func _ready():
 func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
 	# Set the base tile
 	tile_map.set_cell(pos, tileset_source, atlas_coords)
+	
+	# Store the terrain type
+	terrain_data[pos] = tile_type
 	
 	# Use the same noise value that generates the terrain
 	var noise_val = noise.get_noise_2d(pos.x, pos.y)
@@ -111,6 +115,9 @@ func sync_walkable_tiles(tiles: Array):
 	walkable_tiles = tiles
 
 func generateMap():
+	# Clear terrain data at start
+	terrain_data.clear()
+	
 	# Use the noise settings already initialized in _ready()
 	generate_terrain()
 	
@@ -123,6 +130,7 @@ func generateMap():
 	# If we're the server, sync walkable tiles to clients
 	if multiplayer.is_server():
 		sync_walkable_tiles.rpc(walkable_tiles)
+		sync_terrain_data.rpc(terrain_data)
 
 func generate_terrain():
 	# Clear walkable tiles at start
@@ -609,3 +617,7 @@ func handle_player_spawn(is_first_player: bool):
 @rpc("authority", "call_remote", "reliable")
 func reset_map_rpc():
 	reset_map()
+
+@rpc("authority", "call_remote", "reliable")
+func sync_terrain_data(data: Dictionary):
+	terrain_data = data
