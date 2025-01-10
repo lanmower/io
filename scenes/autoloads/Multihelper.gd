@@ -170,8 +170,33 @@ func requestSpawn(playerName, id, characterFile):
 	player_info["name"] = playerName
 	player_info["body"] = characterFile
 	player_info["score"] = 0
+	
+	# Check if this will be the first player before registering
+	var will_be_first = spawnedPlayers.is_empty()
+	
+	# Register the player
 	spawnedPlayers[id] = player_info
 	_register_character.rpc(player_info)
+	
+	# If this is the first player and we're the server, reset the game
+	if multiplayer.is_server() and will_be_first:
+		main = get_node("/root/Game/Level/Main")
+		# Reset day and clear objects/enemies
+		main.current_day = 0
+		main.boss_spawned = false
+		# Reset the day/night cycle
+		main.get_node("dayNight").reset_time.rpc()
+		# Clear all enemies
+		for enemy in main.get_node("Enemies").get_children():
+			enemy.queue_free()
+		main.spawnedEnemies.clear()
+		# Clear all objects
+		for object in main.get_node("Objects").get_children():
+			object.queue_free()
+		main.spawnedObjects = 0
+		# Spawn initial objects
+		main.spawnObjects(main.initialSpawnObjects)
+	
 	spawnPlayer.rpc_id(1, playerName, id, characterFile)
 
 @rpc("any_peer", "call_local", "reliable")
