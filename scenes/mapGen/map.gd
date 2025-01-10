@@ -410,8 +410,8 @@ func generate_cement_areas(terrain_data: Dictionary) -> void:
 			# Place in a new area
 			var valid_pos = valid_positions.pick_random()
 			pos = Vector2i(
-				valid_pos.x - width/2,
-				valid_pos.y - height/2
+				valid_pos.x - float(width)/2,
+				valid_pos.y - float(height)/2
 			)
 		
 		# Ensure position is within valid range

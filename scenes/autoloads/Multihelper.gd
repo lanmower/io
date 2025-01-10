@@ -80,6 +80,24 @@ func _on_player_connected(id):
 func _register_character(new_player_info):
 	var new_player_id = multiplayer.get_remote_sender_id()
 	spawnedPlayers[new_player_id] = new_player_info
+	
+	# If this is the first player and we're the server, reset the game
+	if multiplayer.is_server() and spawnedPlayers.size() == 1:
+		main = get_node("/root/Game/Level/Main")
+		# Reset day and clear objects/enemies
+		main.current_day = 0
+		main.boss_spawned = false
+		# Clear all enemies
+		for enemy in main.get_node("Enemies").get_children():
+			enemy.queue_free()
+		main.spawnedEnemies.clear()
+		# Clear all objects
+		for object in main.get_node("Objects").get_children():
+			object.queue_free()
+		main.spawnedObjects = 0
+		# Spawn initial objects
+		main.spawnObjects(main.initialSpawnObjects)
+	
 	player_spawned.emit(new_player_id, new_player_info)
 	player_registered.emit()
 	
