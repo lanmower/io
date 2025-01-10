@@ -187,115 +187,58 @@ func spawnPlayer(playerName, id, characterFile):
 	newPlayer.name = str(id)
 	main.get_node("Players").add_child(newPlayer)
 	
-	# Get a valid spawn position that's definitely not water
+	# Get a valid spawn position on grass
 	var spawnPos = Vector2.ZERO
-	var water_check_radius = 2  # Check surrounding tiles to ensure we're not too close to water
+	var valid_tiles = []
 	
-	# First try: Use walkable tiles (which should only contain grass tiles now)
-	if map.walkable_tiles.size() > 0:
-		var valid_tiles = []
-		for tile in map.walkable_tiles:
-			var is_valid = true
-			# Check surrounding area for water
-			for dx in range(-water_check_radius, water_check_radius + 1):
-				for dy in range(-water_check_radius, water_check_radius + 1):
-					var check_pos = Vector2i(tile.x + dx, tile.y + dy)
-					if check_pos.x >= 0 and check_pos.x < map.map_width and check_pos.y >= 0 and check_pos.y < map.map_height:
-						var cell = map.tile_map.get_cell_atlas_coords(check_pos)
-						if map.waterCoors.has(cell):
-							is_valid = false
-							break
-				if not is_valid:
-					break
-			if is_valid:
-				valid_tiles.append(tile)
-		
-		if valid_tiles.size() > 0:
-			var candidatePos = valid_tiles.pick_random()
-			spawnPos = map.tile_map.map_to_local(candidatePos)
+	# First try: Use center of map and expand outward until we find grass
+	var center = Vector2i(map.map_width/2, map.map_height/2)
+	var found = false
 	
-	# Second try: Find any grass tile near the center that's not near water
-	if spawnPos == Vector2.ZERO:
-		print("Warning: Using center-search fallback for spawn position")
-		var center = Vector2i(map.map_width/2, map.map_height/2)
-		var found = false
+	# Search in expanding square from center
+	for radius in range(20):  # Maximum search radius of 20 tiles
+		if found: break
 		
-		# Search in expanding square from center
-		for radius in range(1, 50):  # Maximum search radius of 50 tiles
-			if found: break
-			
-			# Check top and bottom rows
-			for x in range(center.x - radius, center.x + radius + 1):
-				if x < 0 or x >= map.map_width: continue
+		# Check in a spiral pattern from center
+		for x in range(center.x - radius, center.x + radius + 1):
+			if x < 0 or x >= map.map_width: continue
+			for y in range(center.y - radius, center.y + radius + 1):
+				if y < 0 or y >= map.map_height: continue
 				
-				for y in [center.y - radius, center.y + radius]:
-					if y < 0 or y >= map.map_height: continue
-					
-					var pos = Vector2i(x, y)
-					var is_valid = true
-					
-					# Check surrounding area for water
-					for dx in range(-water_check_radius, water_check_radius + 1):
-						for dy in range(-water_check_radius, water_check_radius + 1):
-							var check_pos = Vector2i(pos.x + dx, pos.y + dy)
+				var pos = Vector2i(x, y)
+				var tileCoords = map.tile_map.get_cell_atlas_coords(pos)
+				
+				# Only spawn on grass tiles
+				if map.grassAtlasCoords.has(tileCoords):
+					# Check surrounding tiles to make sure we're not near water
+					var is_safe = true
+					for dx in range(-2, 3):
+						for dy in range(-2, 3):
+							var check_pos = Vector2i(x + dx, y + dy)
 							if check_pos.x >= 0 and check_pos.x < map.map_width and check_pos.y >= 0 and check_pos.y < map.map_height:
-								var cell = map.tile_map.get_cell_atlas_coords(check_pos)
-								if map.waterCoors.has(cell):
-									is_valid = false
+								var check_coords = map.tile_map.get_cell_atlas_coords(check_pos)
+								if map.waterCoors.has(check_coords):
+									is_safe = false
 									break
-						if not is_valid:
-							break
+						if not is_safe: break
 					
-					if is_valid:
-						var tileCoords = map.tile_map.get_cell_atlas_coords(pos)
-						if map.grassAtlasCoords.has(tileCoords):
-								spawnPos = map.tile_map.map_to_local(pos)
-								found = true
-								break
-				if found: break
-			
-			# Check left and right columns if not found
-			if not found:
-				for y in range(center.y - radius + 1, center.y + radius):
-					if y < 0 or y >= map.map_height: continue
-					
-					for x in [center.x - radius, center.x + radius]:
-						if x < 0 or x >= map.map_width: continue
-						
-						var pos = Vector2i(x, y)
-						var is_valid = true
-						
-						# Check surrounding area for water
-						for dx in range(-water_check_radius, water_check_radius + 1):
-							for dy in range(-water_check_radius, water_check_radius + 1):
-								var check_pos = Vector2i(pos.x + dx, pos.y + dy)
-								if check_pos.x >= 0 and check_pos.x < map.map_width and check_pos.y >= 0 and check_pos.y < map.map_height:
-									var cell = map.tile_map.get_cell_atlas_coords(check_pos)
-									if map.waterCoors.has(cell):
-										is_valid = false
-										break
-							if not is_valid:
-								break
-						
-						if is_valid:
-							var tileCoords = map.tile_map.get_cell_atlas_coords(pos)
-							if map.grassAtlasCoords.has(tileCoords):
-								spawnPos = map.tile_map.map_to_local(pos)
-								found = true
-								break
-					if found: break
+					if is_safe:
+						spawnPos = map.tile_map.map_to_local(pos)
+						found = true
+						break
+			if found: break
 	
-	# Emergency fallback: Force create a grass tile in the center with safe surroundings
+	# Emergency fallback: Force create a safe grass area in the center
 	if spawnPos == Vector2.ZERO:
-		print("Error: Emergency spawn position fallback")
-		var center = Vector2i(map.map_width/2, map.map_height/2)
-		# Create a safe grass area
-		for dx in range(-water_check_radius, water_check_radius + 1):
-			for dy in range(-water_check_radius, water_check_radius + 1):
-				var pos = center + Vector2i(dx, dy)
+		print("Emergency: Creating safe spawn area in center")
+		var safe_center = Vector2i(map.map_width/2, map.map_height/2)
+		# Create a safe grass area (5x5)
+		for dx in range(-2, 3):
+			for dy in range(-2, 3):
+				var pos = safe_center + Vector2i(dx, dy)
 				if pos.x >= 0 and pos.x < map.map_width and pos.y >= 0 and pos.y < map.map_height:
-					map.set_tile(pos, "grass", map.grassAtlasCoords.pick_random())
-		spawnPos = map.tile_map.map_to_local(center)
+						map.set_tile(pos, "grass", map.grassAtlasCoords.pick_random())
+		spawnPos = map.tile_map.map_to_local(safe_center)
 	
 	newPlayer.sendPos.rpc(spawnPos)
 
