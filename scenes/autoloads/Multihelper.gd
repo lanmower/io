@@ -84,29 +84,29 @@ func _register_character(new_player_info):
 	# If this is the first player and we're the server, reset the game
 	if multiplayer.is_server() and spawnedPlayers.size() == 1:
 		main = get_node("/root/Game/Level/Main")
+		# Reset the day/night cycle first
+		main.get_node("dayNight").reset_time.rpc()
+		await get_tree().create_timer(0.1).timeout  # Give a small delay for sync
+		
 		# Reset day and clear objects/enemies
 		main.current_day = 0
 		main.boss_spawned = false
-		# Reset the day/night cycle
-		main.get_node("dayNight").reset_time.rpc()
+		
 		# Clear all enemies
 		for enemy in main.get_node("Enemies").get_children():
 			enemy.queue_free()
 		main.spawnedEnemies.clear()
+		
 		# Clear all objects
 		for object in main.get_node("Objects").get_children():
 			object.queue_free()
 		main.spawnedObjects = 0
+		
 		# Spawn initial objects
 		main.spawnObjects(main.initialSpawnObjects)
 	
 	player_spawned.emit(new_player_id, new_player_info)
 	player_registered.emit()
-	
-@rpc("call_local" ,"any_peer", "reliable")
-func _deregister_character(id):
-	spawnedPlayers.erase(id)
-	player_despawned.emit()
 
 func _on_player_disconnected(id):
 	connectedPlayers.erase(id)
@@ -129,6 +129,11 @@ func player_loaded():
 	var sender_id = multiplayer.get_remote_sender_id()
 	main = game.get_node("Level/Main")
 	var dayNight = main.get_node("dayNight")
+	
+	# If this is the first player loading, wait a bit to ensure reset is complete
+	if multiplayer.is_server() and spawnedPlayers.size() == 1:
+		await get_tree().create_timer(0.2).timeout
+	
 	var mapData := {
 		"seed": mapSeed,
 		"current_day": main.current_day,
@@ -170,33 +175,8 @@ func requestSpawn(playerName, id, characterFile):
 	player_info["name"] = playerName
 	player_info["body"] = characterFile
 	player_info["score"] = 0
-	
-	# Check if this will be the first player before registering
-	var will_be_first = spawnedPlayers.is_empty()
-	
-	# Register the player
 	spawnedPlayers[id] = player_info
 	_register_character.rpc(player_info)
-	
-	# If this is the first player and we're the server, reset the game
-	if multiplayer.is_server() and will_be_first:
-		main = get_node("/root/Game/Level/Main")
-		# Reset day and clear objects/enemies
-		main.current_day = 0
-		main.boss_spawned = false
-		# Reset the day/night cycle
-		main.get_node("dayNight").reset_time.rpc()
-		# Clear all enemies
-		for enemy in main.get_node("Enemies").get_children():
-			enemy.queue_free()
-		main.spawnedEnemies.clear()
-		# Clear all objects
-		for object in main.get_node("Objects").get_children():
-			object.queue_free()
-		main.spawnedObjects = 0
-		# Spawn initial objects
-		main.spawnObjects(main.initialSpawnObjects)
-	
 	spawnPlayer.rpc_id(1, playerName, id, characterFile)
 
 @rpc("any_peer", "call_local", "reliable")
@@ -209,15 +189,32 @@ func spawnPlayer(playerName, id, characterFile):
 	
 	# Get a valid spawn position that's definitely not water
 	var spawnPos = Vector2.ZERO
+	var water_check_radius = 2  # Check surrounding tiles to ensure we're not too close to water
 	
 	# First try: Use walkable tiles (which should only contain grass tiles now)
 	if map.walkable_tiles.size() > 0:
-		var candidatePos = map.walkable_tiles.pick_random()
-		var tileCoords = map.tile_map.get_cell_atlas_coords(candidatePos)
-		if map.grassAtlasCoords.has(tileCoords):
+		var valid_tiles = []
+		for tile in map.walkable_tiles:
+			var is_valid = true
+			# Check surrounding area for water
+			for dx in range(-water_check_radius, water_check_radius + 1):
+				for dy in range(-water_check_radius, water_check_radius + 1):
+					var check_pos = Vector2i(tile.x + dx, tile.y + dy)
+					if check_pos.x >= 0 and check_pos.x < map.map_width and check_pos.y >= 0 and check_pos.y < map.map_height:
+						var cell = map.tile_map.get_cell_atlas_coords(check_pos)
+						if map.waterCoors.has(cell):
+							is_valid = false
+							break
+				if not is_valid:
+					break
+			if is_valid:
+				valid_tiles.append(tile)
+		
+		if valid_tiles.size() > 0:
+			var candidatePos = valid_tiles.pick_random()
 			spawnPos = map.tile_map.map_to_local(candidatePos)
 	
-	# Second try: Find any grass tile near the center
+	# Second try: Find any grass tile near the center that's not near water
 	if spawnPos == Vector2.ZERO:
 		print("Warning: Using center-search fallback for spawn position")
 		var center = Vector2i(map.map_width/2, map.map_height/2)
@@ -235,14 +232,29 @@ func spawnPlayer(playerName, id, characterFile):
 					if y < 0 or y >= map.map_height: continue
 					
 					var pos = Vector2i(x, y)
-					var tileCoords = map.tile_map.get_cell_atlas_coords(pos)
-					if map.grassAtlasCoords.has(tileCoords):
-						spawnPos = map.tile_map.map_to_local(pos)
-						found = true
-						break
+					var is_valid = true
+					
+					# Check surrounding area for water
+					for dx in range(-water_check_radius, water_check_radius + 1):
+						for dy in range(-water_check_radius, water_check_radius + 1):
+							var check_pos = Vector2i(pos.x + dx, pos.y + dy)
+							if check_pos.x >= 0 and check_pos.x < map.map_width and check_pos.y >= 0 and check_pos.y < map.map_height:
+								var cell = map.tile_map.get_cell_atlas_coords(check_pos)
+								if map.waterCoors.has(cell):
+									is_valid = false
+									break
+						if not is_valid:
+							break
+					
+					if is_valid:
+						var tileCoords = map.tile_map.get_cell_atlas_coords(pos)
+						if map.grassAtlasCoords.has(tileCoords):
+								spawnPos = map.tile_map.map_to_local(pos)
+								found = true
+								break
 				if found: break
 			
-			# Check left and right columns
+			# Check left and right columns if not found
 			if not found:
 				for y in range(center.y - radius + 1, center.y + radius):
 					if y < 0 or y >= map.map_height: continue
@@ -251,18 +263,38 @@ func spawnPlayer(playerName, id, characterFile):
 						if x < 0 or x >= map.map_width: continue
 						
 						var pos = Vector2i(x, y)
-						var tileCoords = map.tile_map.get_cell_atlas_coords(pos)
-						if map.grassAtlasCoords.has(tileCoords):
-							spawnPos = map.tile_map.map_to_local(pos)
-							found = true
-							break
+						var is_valid = true
+						
+						# Check surrounding area for water
+						for dx in range(-water_check_radius, water_check_radius + 1):
+							for dy in range(-water_check_radius, water_check_radius + 1):
+								var check_pos = Vector2i(pos.x + dx, pos.y + dy)
+								if check_pos.x >= 0 and check_pos.x < map.map_width and check_pos.y >= 0 and check_pos.y < map.map_height:
+									var cell = map.tile_map.get_cell_atlas_coords(check_pos)
+									if map.waterCoors.has(cell):
+										is_valid = false
+										break
+							if not is_valid:
+								break
+						
+						if is_valid:
+							var tileCoords = map.tile_map.get_cell_atlas_coords(pos)
+							if map.grassAtlasCoords.has(tileCoords):
+								spawnPos = map.tile_map.map_to_local(pos)
+								found = true
+								break
 					if found: break
 	
-	# Emergency fallback: Force create a grass tile in the center
+	# Emergency fallback: Force create a grass tile in the center with safe surroundings
 	if spawnPos == Vector2.ZERO:
 		print("Error: Emergency spawn position fallback")
 		var center = Vector2i(map.map_width/2, map.map_height/2)
-		map.set_tile(center, "grass", map.grassAtlasCoords.pick_random())
+		# Create a safe grass area
+		for dx in range(-water_check_radius, water_check_radius + 1):
+			for dy in range(-water_check_radius, water_check_radius + 1):
+				var pos = center + Vector2i(dx, dy)
+				if pos.x >= 0 and pos.x < map.map_width and pos.y >= 0 and pos.y < map.map_height:
+					map.set_tile(pos, "grass", map.grassAtlasCoords.pick_random())
 		spawnPos = map.tile_map.map_to_local(center)
 	
 	newPlayer.sendPos.rpc(spawnPos)

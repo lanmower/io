@@ -52,10 +52,14 @@ func get_walkable_tiles_in_distance(player_tile_pos: Vector2i, min_distance: int
 
 func is_walkable(tile_pos: Vector2i) -> bool:
 	var atlas_coord = tilemap.get_cell_atlas_coords(tile_pos)
-	# Check if it's a wall tile (8,12)
-	if atlas_coord == Vector2i(8,12):
+	# Check if it's a wall tile (8,12) or if it's not in WALKABLE_TILES
+	if atlas_coord == Vector2i(8,12) or not atlas_coord in WALKABLE_TILES:
 		return false
-	return atlas_coord in WALKABLE_TILES
+	# Check if it's a fence in the terrain data
+	var terrain_data = tilemap.get_parent().get_node("Map").terrain_data
+	if terrain_data.has(tile_pos) and terrain_data[tile_pos] == "fence":
+		return false
+	return true
 
 func get_neighbors(tile_pos: Vector2i) -> Array:
 	var neighbors = [
