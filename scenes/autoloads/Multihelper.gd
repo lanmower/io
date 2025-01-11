@@ -172,8 +172,10 @@ func sendGameData(playerData, mapData):
 		var dayNight = main.get_node("dayNight")
 		dayNight.sync_time.rpc(mapData["current_day"], mapData["current_hour"], mapData["current_minute"])
 	
-	# Now that we have the seed, initialize the map
-	map.loadMap()
+	# Clear any existing map data on client
+	if !multiplayer.is_server():
+		map.clear_map()
+	
 	data_loaded.emit()
 	set_process(true)
 

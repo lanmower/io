@@ -30,12 +30,7 @@ func _ready():
 	if multiplayer.is_server():
 		noise.seed = Multihelper.mapSeed
 		generateMap()
-	# Clients will wait for server data through loadMap() called by Multihelper
-
-# Called by Multihelper when client receives map data
-func loadMap():
-	noise.seed = Multihelper.mapSeed  # Set seed with synchronized value
-	generateMap()  # Now generate with correct seed
+	# Clients will wait for server data
 
 func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
 	# Set the base tile
@@ -82,6 +77,31 @@ func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
 	if multiplayer.is_server():
 		sync_tile.rpc(pos, atlas_coords, tint)
 
+@rpc("authority", "call_remote", "reliable")
+func sync_tile(pos: Vector2i, atlas_coords: Vector2i, tint: Color):
+	# Clients receive the tile data from server
+	tile_map.set_cell(pos, tileset_source, atlas_coords)
+	var tile_data = tile_map.get_cell_tile_data(pos)
+	if tile_data:
+		tile_data.modulate = tint
+	# Also store terrain type based on atlas coords
+	if grassAtlasCoords.has(atlas_coords):
+		terrain_data[pos] = "grass"
+	elif waterCoors.has(atlas_coords):
+		terrain_data[pos] = "water"
+	elif sandCoords.has(atlas_coords):
+		terrain_data[pos] = "sand"
+	elif cementCoords.has(atlas_coords):
+		terrain_data[pos] = "cement"
+
+# Remove loadMap as it's no longer needed - clients only receive tiles from server
+func clear_map():
+	terrain_data.clear()
+	walkable_tiles.clear()
+	for x in range(map_width):
+		for y in range(map_height):
+			tile_map.set_cell(Vector2i(x, y), -1)  # Clear all tiles
+
 func get_height_at(pos: Vector2i) -> float:
 	if pos.x < 0 or pos.x >= map_width or pos.y < 0 or pos.y >= map_height:
 		return 0.0
@@ -107,14 +127,6 @@ func get_height_at(pos: Vector2i) -> float:
 		var t = float(min_dist) / max_distance
 		return lerp(0.0, 1.0, pow(t, 0.7))
 	return 1.0
-
-@rpc("authority", "call_remote", "reliable")
-func sync_tile(pos: Vector2i, atlas_coords: Vector2i, tint: Color):
-	# Clients receive the tile data from server
-	tile_map.set_cell(pos, tileset_source, atlas_coords)
-	var tile_data = tile_map.get_cell_tile_data(pos)
-	if tile_data:
-		tile_data.modulate = tint
 
 @rpc("authority", "call_remote", "reliable")
 func sync_walkable_tiles(tiles: Array):
