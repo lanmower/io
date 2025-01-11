@@ -21,15 +21,21 @@ signal map_reset
 
 func _ready():
 	# Initialize noise for tinting - use same settings as terrain generation
-	noise.seed = Multihelper.mapSeed
 	noise.noise_type = FastNoiseLite.TYPE_PERLIN
 	noise.fractal_octaves = 4
 	noise.fractal_lacunarity = 2.0
 	noise.frequency = 0.02
 	
-	# Generate map on server, or if we're the client wait for server data
+	# Only set seed and generate if we're the server
 	if multiplayer.is_server():
+		noise.seed = Multihelper.mapSeed
 		generateMap()
+	# Clients will wait for server data through loadMap() called by Multihelper
+
+# Called by Multihelper when client receives map data
+func loadMap():
+	noise.seed = Multihelper.mapSeed  # Set seed with synchronized value
+	generateMap()  # Now generate with correct seed
 
 func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
 	# Set the base tile

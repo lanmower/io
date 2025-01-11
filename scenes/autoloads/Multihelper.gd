@@ -164,6 +164,7 @@ func sendGameData(playerData, mapData):
 	spawnedPlayers = playerData
 	mapSeed = mapData["seed"]
 	main = get_node("/root/Game/Level/Main")
+	map = main.get_node("Map")
 	
 	# Sync time state
 	if mapData.has("current_day"):
@@ -171,7 +172,8 @@ func sendGameData(playerData, mapData):
 		var dayNight = main.get_node("dayNight")
 		dayNight.sync_time.rpc(mapData["current_day"], mapData["current_hour"], mapData["current_minute"])
 	
-	loadMap()
+	# Now that we have the seed, initialize the map
+	map.loadMap()
 	data_loaded.emit()
 	set_process(true)
 
@@ -183,6 +185,9 @@ func _on_server_disconnected():
 	server_disconnected.emit()
 
 func loadMap():
+	# This function is now only used by the server
+	if !multiplayer.is_server():
+		return
 	main = get_node("/root/Game/Level/Main")
 	map = main.get_node("Map")
 	map.generateMap()
