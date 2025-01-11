@@ -80,37 +80,44 @@ func _on_player_connected(id):
 func _register_character(new_player_info):
 	var new_player_id = multiplayer.get_remote_sender_id()
 	
-	# If there are no players and we're the server, reset the game
-	if multiplayer.is_server() and spawnedPlayers.keys().is_empty():
-		main = get_node("/root/Game/Level/Main")
+	# If there are no active players and we're the server, reset the game
+	if multiplayer.is_server():
+		var active_players = []
+		for id in spawnedPlayers.keys():
+			# Check if the player is still connected
+			if id in multiplayer.get_peers() or id == 1:  # Include server (id 1)
+				active_players.append(id)
 		
-		# Reset the day/night cycle first and wait for it to complete
-		var dayNight = main.get_node("dayNight")
-		dayNight.current_day = 0
-		dayNight.current_hour = 6  # Start at 6 AM
-		dayNight.current_minute = 0
-		dayNight.sync_time.rpc(0, 6, 0)
-		dayNight.time_tick.emit(0, 6, 0)
-		
-		# Reset main scene state
-		main.current_day = 0
-		main.boss_spawned = false
-		
-		# Clear all enemies
-		for enemy in main.get_node("Enemies").get_children():
-			enemy.queue_free()
-		main.spawnedEnemies.clear()
-		
-		# Clear all objects
-		for object in main.get_node("Objects").get_children():
-			object.queue_free()
-		main.spawnedObjects = 0
-		
-		# Spawn initial objects
-		main.spawnObjects(main.initialSpawnObjects)
-		
-		# Give a small delay to ensure everything is synced
-		await get_tree().create_timer(0.1).timeout
+		if active_players.is_empty():
+			main = get_node("/root/Game/Level/Main")
+			
+			# Reset the day/night cycle first and wait for it to complete
+			var dayNight = main.get_node("dayNight")
+			dayNight.current_day = 0
+			dayNight.current_hour = 6  # Start at 6 AM
+			dayNight.current_minute = 0
+			dayNight.sync_time.rpc(0, 6, 0)
+			dayNight.time_tick.emit(0, 6, 0)
+			
+			# Reset main scene state
+			main.current_day = 0
+			main.boss_spawned = false
+			
+			# Clear all enemies
+			for enemy in main.get_node("Enemies").get_children():
+				enemy.queue_free()
+			main.spawnedEnemies.clear()
+			
+			# Clear all objects
+			for object in main.get_node("Objects").get_children():
+				object.queue_free()
+			main.spawnedObjects = 0
+			
+			# Spawn initial objects
+			main.spawnObjects(main.initialSpawnObjects)
+			
+			# Give a small delay to ensure everything is synced
+			await get_tree().create_timer(0.1).timeout
 	
 	# Now register the player
 	spawnedPlayers[new_player_id] = new_player_info
