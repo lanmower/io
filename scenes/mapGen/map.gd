@@ -25,14 +25,16 @@ func _ready():
 	noise.fractal_octaves = 4
 	noise.fractal_lacunarity = 2.0
 	noise.frequency = 0.02
+	noise.seed = Multihelper.mapSeed
 	
-	# Only set seed and generate if we're the server
+	# Only generate if we're the server
 	if multiplayer.is_server():
-		noise.seed = Multihelper.mapSeed
 		generateMap()
-	else:
-		# Client requests map data after initialization
-		request_map_data.rpc_id(1)
+
+# Called by Multihelper when client is ready to receive map
+func initialize_client():
+	clear_map()
+	request_map_data.rpc_id(1)
 
 func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
 	# Set the base tile
@@ -645,6 +647,9 @@ func reset_map_rpc():
 @rpc("authority", "call_remote", "reliable")
 func sync_full_map(tile_data: Array):
 	# Receive full map data from server
+	print("Received map data with ", tile_data.size(), " tiles")
+	clear_map()
+	
 	# tile_data is array of [pos, atlas_coords, tint, terrain_type]
 	for tile in tile_data:
 		var pos = tile[0]
@@ -662,6 +667,7 @@ func send_full_map_to_client(peer_id: int):
 	if !multiplayer.is_server():
 		return
 		
+	print("Sending map data to client ", peer_id)
 	var tile_data = []
 	for y in range(map_height):
 		for x in range(map_width):
@@ -673,6 +679,7 @@ func send_full_map_to_client(peer_id: int):
 				var terrain_type = terrain_data.get(pos, "")
 				tile_data.append([pos, atlas_coords, tint, terrain_type])
 	
+	print("Sending ", tile_data.size(), " tiles to client")
 	sync_full_map.rpc_id(peer_id, tile_data)
 	sync_walkable_tiles.rpc_id(peer_id, walkable_tiles)
 
