@@ -114,6 +114,10 @@ func sync_tile(pos: Vector2i, atlas_coords: Vector2i, tint: Color):
 func sync_walkable_tiles(tiles: Array):
 	walkable_tiles = tiles
 
+@rpc("authority", "call_remote", "reliable")
+func sync_terrain_data(data: Dictionary):
+	terrain_data = data
+
 func generateMap():
 	# Clear terrain data at start
 	terrain_data.clear()
@@ -127,7 +131,7 @@ func generateMap():
 		return not waterCoors.has(tileCoords)
 	)
 	
-	# If we're the server, sync walkable tiles to clients
+	# If we're the server, sync walkable tiles and terrain data to clients
 	if multiplayer.is_server():
 		sync_walkable_tiles.rpc(walkable_tiles)
 		sync_terrain_data.rpc(terrain_data)
@@ -617,7 +621,3 @@ func handle_player_spawn(is_first_player: bool):
 @rpc("authority", "call_remote", "reliable")
 func reset_map_rpc():
 	reset_map()
-
-@rpc("authority", "call_remote", "reliable")
-func sync_terrain_data(data: Dictionary):
-	terrain_data = data
