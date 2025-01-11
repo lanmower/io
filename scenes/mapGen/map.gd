@@ -30,7 +30,9 @@ func _ready():
 	if multiplayer.is_server():
 		noise.seed = Multihelper.mapSeed
 		generateMap()
-	# Clients will wait for server data
+	else:
+		# Client requests map data after initialization
+		request_map_data.rpc_id(1)
 
 func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
 	# Set the base tile
@@ -639,3 +641,43 @@ func handle_player_spawn(is_first_player: bool):
 @rpc("authority", "call_remote", "reliable")
 func reset_map_rpc():
 	reset_map()
+
+@rpc("authority", "call_remote", "reliable")
+func sync_full_map(tile_data: Array):
+	# Receive full map data from server
+	# tile_data is array of [pos, atlas_coords, tint, terrain_type]
+	for tile in tile_data:
+		var pos = tile[0]
+		var atlas_coords = tile[1]
+		var tint = tile[2]
+		var terrain_type = tile[3]
+		
+		tile_map.set_cell(pos, tileset_source, atlas_coords)
+		var tile_data = tile_map.get_cell_tile_data(pos)
+		if tile_data:
+			tile_data.modulate = tint
+		terrain_data[pos] = terrain_type
+
+func send_full_map_to_client(peer_id: int):
+	if !multiplayer.is_server():
+		return
+		
+	var tile_data = []
+	for y in range(map_height):
+		for x in range(map_width):
+			var pos = Vector2i(x, y)
+			var atlas_coords = tile_map.get_cell_atlas_coords(pos)
+			if atlas_coords != Vector2i(-1, -1):  # If tile exists
+				var tile_data_obj = tile_map.get_cell_tile_data(pos)
+				var tint = tile_data_obj.modulate if tile_data_obj else Color.WHITE
+				var terrain_type = terrain_data.get(pos, "")
+				tile_data.append([pos, atlas_coords, tint, terrain_type])
+	
+	sync_full_map.rpc_id(peer_id, tile_data)
+	sync_walkable_tiles.rpc_id(peer_id, walkable_tiles)
+
+@rpc("any_peer", "call_remote", "reliable")
+func request_map_data():
+	if multiplayer.is_server():
+		var peer_id = multiplayer.get_remote_sender_id()
+		send_full_map_to_client(peer_id)

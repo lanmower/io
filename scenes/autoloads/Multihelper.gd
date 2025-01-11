@@ -172,9 +172,10 @@ func sendGameData(playerData, mapData):
 		var dayNight = main.get_node("dayNight")
 		dayNight.sync_time.rpc(mapData["current_day"], mapData["current_hour"], mapData["current_minute"])
 	
-	# Clear any existing map data on client
+	# Clear any existing map data on client and request new data
 	if !multiplayer.is_server():
 		map.clear_map()
+		map.request_map_data.rpc_id(1)
 	
 	data_loaded.emit()
 	set_process(true)
