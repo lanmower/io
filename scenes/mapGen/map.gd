@@ -165,7 +165,7 @@ func generate_terrain():
 	var border_width = 8
 	var border_falloff = 4
 	
-	var terrain_data = {}
+	var terrain_types = {}  # Renamed from terrain_data to avoid confusion
 	var noise_data = {}
 	
 	# First pass: Generate base terrain
@@ -188,10 +188,10 @@ func generate_terrain():
 				threshold = lerp(1.0, -0.1, t)
 			
 			if noise_value > threshold:
-				terrain_data[pos] = "grass"
+				terrain_types[pos] = "grass"
 				set_tile(pos, "grass", grassAtlasCoords.pick_random())
 			else:
-				terrain_data[pos] = "water"
+				terrain_types[pos] = "water"
 				set_tile(pos, "water", waterCoors.pick_random())
 	
 	# Second pass: Validate and add walkable tiles
@@ -203,9 +203,9 @@ func generate_terrain():
 			if grassAtlasCoords.has(tileCoords):
 				walkable_tiles.append(pos)
 	
-	generate_beaches(terrain_data, noise_data)
+	generate_beaches(terrain_types, noise_data)
 	connect_islands()
-	generate_cement_areas(terrain_data)
+	generate_cement_areas(terrain_types)
 	
 	# Final validation of walkable tiles
 	var validated_tiles = []
