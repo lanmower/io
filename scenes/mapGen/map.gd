@@ -60,52 +60,15 @@ func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
 	# Store the terrain type
 	terrain_data[pos] = tile_type
 	
-	# Use the same noise value that generates the terrain
-	var noise_val = noise.get_noise_2d(pos.x, pos.y)
-	noise_val = (noise_val + 1.0) * 0.5  # Convert to 0-1 range
-	
-	# Calculate tint based on tile type with more conservative variation
-	var tint = Color.WHITE
-	match tile_type:
-		"grass":
-			tint = Color(
-				lerp(0.8, 1.0, noise_val),  # red
-				lerp(0.9, 1.1, noise_val),  # green
-				lerp(0.8, 1.0, noise_val)   # blue
-			)
-		"water":
-			tint = Color(
-				lerp(0.8, 1.0, noise_val),  # red
-				lerp(0.8, 1.0, noise_val),  # green
-				lerp(0.9, 1.1, noise_val)   # blue
-			)
-		"sand":
-			tint = Color(
-				lerp(0.9, 1.1, noise_val),  # red
-				lerp(0.8, 1.0, noise_val),  # green
-				lerp(0.7, 0.9, noise_val)   # blue
-			)
-		"cement":
-			var gray = lerp(0.8, 1.0, noise_val)
-			tint = Color(gray, gray, gray)
-	
-	# Apply tint to the tile data
-	var tile_data = tile_map.get_cell_tile_data(pos)
-	if tile_data:
-		tile_data.set_modulate(tint)  # Use set_modulate instead of direct assignment
-		
 	# If we're the server, synchronize to clients
 	if multiplayer.is_server():
-		sync_tile.rpc(pos, atlas_coords, tint)
+		sync_tile.rpc(pos, atlas_coords)
 
 @rpc("authority", "call_remote", "reliable")
-func sync_tile(pos: Vector2i, atlas_coords: Vector2i, tint: Color):
+func sync_tile(pos: Vector2i, atlas_coords: Vector2i):
 	# Clients receive the tile data from server
 	tile_map.set_cell(pos, tileset_source, atlas_coords)
-	var tile_data = tile_map.get_cell_tile_data(pos)
-	if tile_data:
-		tile_data.set_modulate(tint)  # Use set_modulate instead of direct assignment
-	# Also store terrain type based on atlas coords
+	# Store terrain type based on atlas coords
 	if grassAtlasCoords.has(atlas_coords):
 		terrain_data[pos] = "grass"
 	elif waterCoors.has(atlas_coords):
@@ -674,17 +637,13 @@ func sync_full_map(map_tiles: Array):
 	print("Client received map data with ", map_tiles.size(), " tiles")
 	clear_map()
 	
-	# map_tiles is array of [pos, atlas_coords, tint, terrain_type]
+	# map_tiles is array of [pos, atlas_coords, terrain_type]
 	for tile in map_tiles:
 		var pos = tile[0]
 		var atlas_coords = tile[1]
-		var tint = tile[2]
-		var terrain_type = tile[3]
+		var terrain_type = tile[2]
 		
 		tile_map.set_cell(pos, tileset_source, atlas_coords)
-		var tile_data = tile_map.get_cell_tile_data(pos)
-		if tile_data:
-			tile_data.modulate = tint
 		terrain_data[pos] = terrain_type
 	
 	print("Client finished processing map data, placed ", map_tiles.size(), " tiles")
@@ -701,10 +660,8 @@ func send_full_map_to_client(peer_id: int):
 			var pos = Vector2i(x, y)
 			var atlas_coords = tile_map.get_cell_atlas_coords(pos)
 			if atlas_coords != Vector2i(-1, -1):  # If tile exists
-				var tile_data = tile_map.get_cell_tile_data(pos)
-				var tint = tile_data.modulate if tile_data else Color.WHITE
 				var terrain_type = terrain_data.get(pos, "")
-				map_tiles.append([pos, atlas_coords, tint, terrain_type])
+				map_tiles.append([pos, atlas_coords, terrain_type])
 	
 	print("Server sending ", map_tiles.size(), " tiles to client ", peer_id)
 	if map_tiles.size() > 0:
