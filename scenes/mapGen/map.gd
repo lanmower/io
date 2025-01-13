@@ -110,7 +110,7 @@ func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
 	if source.has_tile(atlas_coords):
 		# Set the tile directly without checking tile data
 		tile_map.erase_cell(pos)
-		tile_map.set_cell(pos, tileset_source, atlas_coords)
+		tile_map.set_cell(pos, tileset_source, atlas_coords, 0)
 		success = true
 		print("Successfully set tile at pos: ", pos)
 	else:
@@ -137,7 +137,7 @@ func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
 		if alternative_coords and source.has_tile(alternative_coords):
 			print("Using alternative coordinates for ", tile_type, ": ", alternative_coords)
 			tile_map.erase_cell(pos)
-			tile_map.set_cell(pos, tileset_source, alternative_coords)
+			tile_map.set_cell(pos, tileset_source, alternative_coords, 0)
 			success = true
 			print("Successfully set alternative tile at pos: ", pos)
 		else:
@@ -196,7 +196,7 @@ func sync_tile(pos: Vector2i, atlas_coords: Vector2i):
 	# Try to set the tile
 	if source.has_tile(atlas_coords):
 		tile_map.erase_cell(pos)
-		tile_map.set_cell(pos, tileset_source, atlas_coords)
+		tile_map.set_cell(pos, tileset_source, atlas_coords, 0)
 		success = true
 		print("Successfully synced tile at pos: ", pos)
 	else:
@@ -241,7 +241,7 @@ func sync_tile(pos: Vector2i, atlas_coords: Vector2i):
 		if alternative_coords and source.has_tile(alternative_coords):
 			print("Using alternative coordinates in sync for ", terrain_type, ": ", alternative_coords)
 			tile_map.erase_cell(pos)
-			tile_map.set_cell(pos, tileset_source, alternative_coords)
+			tile_map.set_cell(pos, tileset_source, alternative_coords, 0)
 			success = true
 			print("Successfully synced alternative tile at pos: ", pos)
 		else:
