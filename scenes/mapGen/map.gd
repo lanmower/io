@@ -32,16 +32,21 @@ func _ready():
 	noise.fractal_lacunarity = 2.0
 	noise.frequency = 0.02
 	noise.seed = Multihelper.mapSeed
+	print("Map initialized with seed: ", Multihelper.mapSeed)
 	
 	# Only generate if we're the server
 	if multiplayer.is_server():
 		print("Server generating initial map")
 		generateMap()
+	else:
+		print("Client waiting for map data")
+		initialize_client()
 
 # Called by Multihelper when client is ready to receive map
 func initialize_client():
 	print("Client initializing map")
 	clear_map()
+	print("Client requesting map data from server")
 	request_map_data.rpc_id(1)
 
 func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
@@ -59,35 +64,35 @@ func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
 	var noise_val = noise.get_noise_2d(pos.x, pos.y)
 	noise_val = (noise_val + 1.0) * 0.5  # Convert to 0-1 range
 	
-	# Calculate tint based on tile type with normal variation (half of doubled)
+	# Calculate tint based on tile type with more conservative variation
 	var tint = Color.WHITE
 	match tile_type:
 		"grass":
 			tint = Color(
-				lerp(0.7, 1.2, noise_val),  # red (normal range)
-				lerp(0.8, 1.3, noise_val),  # green (normal range)
-				lerp(0.7, 1.2, noise_val)   # blue (normal range)
+				lerp(0.8, 1.0, noise_val),  # red
+				lerp(0.9, 1.1, noise_val),  # green
+				lerp(0.8, 1.0, noise_val)   # blue
 			)
 		"water":
 			tint = Color(
-				lerp(0.7, 1.1, noise_val),  # red (normal range)
-				lerp(0.7, 1.2, noise_val),  # green (normal range)
-				lerp(0.8, 1.3, noise_val)   # blue (normal range)
+				lerp(0.8, 1.0, noise_val),  # red
+				lerp(0.8, 1.0, noise_val),  # green
+				lerp(0.9, 1.1, noise_val)   # blue
 			)
 		"sand":
 			tint = Color(
-				lerp(0.8, 1.3, noise_val),  # red (normal range)
-				lerp(0.7, 1.2, noise_val),  # green (normal range)
-				lerp(0.6, 1.1, noise_val)   # blue (normal range)
+				lerp(0.9, 1.1, noise_val),  # red
+				lerp(0.8, 1.0, noise_val),  # green
+				lerp(0.7, 0.9, noise_val)   # blue
 			)
 		"cement":
-			var gray = lerp(0.7, 1.2, noise_val)  # normal range
+			var gray = lerp(0.8, 1.0, noise_val)
 			tint = Color(gray, gray, gray)
 	
-	# Apply tint to the tile
+	# Apply tint to the tile data
 	var tile_data = tile_map.get_cell_tile_data(pos)
 	if tile_data:
-		tile_data.modulate = tint
+		tile_data.set_modulate(tint)  # Use set_modulate instead of direct assignment
 		
 	# If we're the server, synchronize to clients
 	if multiplayer.is_server():
@@ -99,7 +104,7 @@ func sync_tile(pos: Vector2i, atlas_coords: Vector2i, tint: Color):
 	tile_map.set_cell(pos, tileset_source, atlas_coords)
 	var tile_data = tile_map.get_cell_tile_data(pos)
 	if tile_data:
-		tile_data.modulate = tint
+		tile_data.set_modulate(tint)  # Use set_modulate instead of direct assignment
 	# Also store terrain type based on atlas coords
 	if grassAtlasCoords.has(atlas_coords):
 		terrain_data[pos] = "grass"
@@ -666,8 +671,7 @@ func sync_full_map(map_tiles: Array):
 		push_error("Cannot sync map - TileMap node not found!")
 		return
 		
-	# Receive full map data from server
-	print("Received map data with ", map_tiles.size(), " tiles")
+	print("Client received map data with ", map_tiles.size(), " tiles")
 	clear_map()
 	
 	# map_tiles is array of [pos, atlas_coords, tint, terrain_type]
@@ -677,18 +681,20 @@ func sync_full_map(map_tiles: Array):
 		var tint = tile[2]
 		var terrain_type = tile[3]
 		
-		print("Setting tile at ", pos, " with atlas coords ", atlas_coords)
 		tile_map.set_cell(pos, tileset_source, atlas_coords)
 		var tile_data = tile_map.get_cell_tile_data(pos)
 		if tile_data:
 			tile_data.modulate = tint
 		terrain_data[pos] = terrain_type
+	
+	print("Client finished processing map data, placed ", map_tiles.size(), " tiles")
 
 func send_full_map_to_client(peer_id: int):
 	if !multiplayer.is_server():
+		print("Warning: Non-server tried to send map data")
 		return
 		
-	print("Sending map data to client ", peer_id)
+	print("Preparing map data for client ", peer_id)
 	var map_tiles = []
 	for y in range(map_height):
 		for x in range(map_width):
@@ -700,18 +706,18 @@ func send_full_map_to_client(peer_id: int):
 				var terrain_type = terrain_data.get(pos, "")
 				map_tiles.append([pos, atlas_coords, tint, terrain_type])
 	
-	print("Server has ", map_tiles.size(), " tiles to send")
+	print("Server sending ", map_tiles.size(), " tiles to client ", peer_id)
 	if map_tiles.size() > 0:
-		print("Sample tile data: ", map_tiles[0])
+		print("First tile data: pos=", map_tiles[0][0], " atlas=", map_tiles[0][1])
 	sync_full_map.rpc_id(peer_id, map_tiles)
 	sync_walkable_tiles.rpc_id(peer_id, walkable_tiles)
 
 @rpc("any_peer", "call_remote", "reliable")
 func request_map_data():
-	print("Received map data request")
+	print("Received map data request from peer: ", multiplayer.get_remote_sender_id())
 	if multiplayer.is_server():
 		var peer_id = multiplayer.get_remote_sender_id()
 		print("Server sending map data to peer ", peer_id)
 		send_full_map_to_client(peer_id)
 	else:
-		print("Non-server received map data request")
+		print("Warning: Non-server received map data request")
