@@ -108,7 +108,10 @@ func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
 		# Get the tile data to ensure it's valid
 		var tile_data = source.get_tile_data(atlas_coords, 0)
 		if tile_data:
-			tile_map.set_cell(pos, tileset_source, atlas_coords)
+			# Use erase_cell first to clear any existing tile
+			tile_map.erase_cell(pos)
+			# Then set the new tile
+			tile_map.set_cell(pos, tileset_source, atlas_coords, 0)
 			success = true
 		else:
 			push_error("Invalid tile data for coords: " + str(atlas_coords))
@@ -127,7 +130,10 @@ func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
 			var tile_data = source.get_tile_data(alternative_coords, 0)
 			if tile_data:
 				print("Using alternative coordinates for ", tile_type, ": ", alternative_coords)
-				tile_map.set_cell(pos, tileset_source, alternative_coords)
+				# Use erase_cell first to clear any existing tile
+				tile_map.erase_cell(pos)
+				# Then set the new tile
+				tile_map.set_cell(pos, tileset_source, alternative_coords, 0)
 				success = true
 			else:
 				push_error("Invalid tile data for alternative coords: " + str(alternative_coords))
@@ -179,7 +185,10 @@ func sync_tile(pos: Vector2i, atlas_coords: Vector2i):
 	if source.has_tile(atlas_coords):
 		var tile_data = source.get_tile_data(atlas_coords, 0)
 		if tile_data:
-			tile_map.set_cell(pos, tileset_source, atlas_coords)
+			# Use erase_cell first to clear any existing tile
+			tile_map.erase_cell(pos)
+			# Then set the new tile
+			tile_map.set_cell(pos, tileset_source, atlas_coords, 0)
 			success = true
 		else:
 			push_error("Invalid tile data for sync coords: " + str(atlas_coords))
@@ -211,7 +220,10 @@ func sync_tile(pos: Vector2i, atlas_coords: Vector2i):
 			var tile_data = source.get_tile_data(alternative_coords, 0)
 			if tile_data:
 				print("Using alternative coordinates in sync for ", terrain_type, ": ", alternative_coords)
-				tile_map.set_cell(pos, tileset_source, alternative_coords)
+				# Use erase_cell first to clear any existing tile
+				tile_map.erase_cell(pos)
+				# Then set the new tile
+				tile_map.set_cell(pos, tileset_source, alternative_coords, 0)
 				success = true
 			else:
 				push_error("Invalid tile data for alternative sync coords: " + str(alternative_coords))
@@ -231,7 +243,7 @@ func clear_map():
 	walkable_tiles.clear()
 	for x in range(map_width):
 		for y in range(map_height):
-			tile_map.set_cell(Vector2i(x, y), -1)  # Clear all tiles
+			tile_map.erase_cell(Vector2i(x, y))  # Use erase_cell instead of set_cell(-1)
 
 func get_height_at(pos: Vector2i) -> float:
 	if pos.x < 0 or pos.x >= map_width or pos.y < 0 or pos.y >= map_height:
