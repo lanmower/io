@@ -103,6 +103,9 @@ func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
 	# Try to set the tile with the original coordinates
 	var success = false
 	
+	# Debug print for tile setting attempt
+	print("Attempting to set tile at pos: ", pos, " type: ", tile_type, " coords: ", atlas_coords)
+	
 	# Validate the tile exists in the source
 	if source.has_tile(atlas_coords):
 		# Get the tile data to ensure it's valid
@@ -110,21 +113,34 @@ func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
 		if tile_data:
 			# Use erase_cell first to clear any existing tile
 			tile_map.erase_cell(pos)
-			# Then set the new tile
-			tile_map.set_cell(pos, tileset_source, atlas_coords, 0)
+			# Then set the new tile with explicit alternative
+			tile_map.set_cell(pos, tileset_source, atlas_coords, 0, 0)
 			success = true
+			print("Successfully set tile at pos: ", pos)
 		else:
 			push_error("Invalid tile data for coords: " + str(atlas_coords))
+	else:
+		print("Tile not found in source for coords: ", atlas_coords)
 	
 	if !success:
 		# If the original coordinates failed, try alternative coordinates
 		var alternative_coords = null
 		match tile_type:
-			"grass": alternative_coords = grassAtlasCoords[0]
-			"water": alternative_coords = waterCoors[0]
-			"sand": alternative_coords = sandCoords[0]
-			"cement": alternative_coords = cementCoords[0]
-			"fence": alternative_coords = wallCoords[0]
+			"grass": 
+				alternative_coords = grassAtlasCoords[0]
+				print("Using grass alternative: ", alternative_coords)
+			"water": 
+				alternative_coords = waterCoors[0]
+				print("Using water alternative: ", alternative_coords)
+			"sand": 
+				alternative_coords = sandCoords[0]
+				print("Using sand alternative: ", alternative_coords)
+			"cement": 
+				alternative_coords = cementCoords[0]
+				print("Using cement alternative: ", alternative_coords)
+			"fence": 
+				alternative_coords = wallCoords[0]
+				print("Using fence alternative: ", alternative_coords)
 		
 		if alternative_coords and source.has_tile(alternative_coords):
 			var tile_data = source.get_tile_data(alternative_coords, 0)
@@ -132,11 +148,14 @@ func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
 				print("Using alternative coordinates for ", tile_type, ": ", alternative_coords)
 				# Use erase_cell first to clear any existing tile
 				tile_map.erase_cell(pos)
-				# Then set the new tile
-				tile_map.set_cell(pos, tileset_source, alternative_coords, 0)
+				# Then set the new tile with explicit alternative
+				tile_map.set_cell(pos, tileset_source, alternative_coords, 0, 0)
 				success = true
+				print("Successfully set alternative tile at pos: ", pos)
 			else:
 				push_error("Invalid tile data for alternative coords: " + str(alternative_coords))
+		else:
+			push_error("Alternative coordinates not found in source: " + str(alternative_coords))
 	
 	if success:
 		# Store the terrain type
@@ -169,17 +188,24 @@ func sync_tile(pos: Vector2i, atlas_coords: Vector2i):
 	var success = false
 	var terrain_type = ""
 	
+	print("Attempting to sync tile at pos: ", pos, " coords: ", atlas_coords)
+	
 	# First try to determine terrain type from the original coordinates
 	if grassAtlasCoords.has(atlas_coords):
 		terrain_type = "grass"
+		print("Detected grass tile in sync")
 	elif waterCoors.has(atlas_coords):
 		terrain_type = "water"
+		print("Detected water tile in sync")
 	elif sandCoords.has(atlas_coords):
 		terrain_type = "sand"
+		print("Detected sand tile in sync")
 	elif cementCoords.has(atlas_coords):
 		terrain_type = "cement"
+		print("Detected cement tile in sync")
 	elif wallCoords.has(atlas_coords):
 		terrain_type = "fence"
+		print("Detected fence tile in sync")
 	
 	# Try to set the tile
 	if source.has_tile(atlas_coords):
@@ -187,34 +213,52 @@ func sync_tile(pos: Vector2i, atlas_coords: Vector2i):
 		if tile_data:
 			# Use erase_cell first to clear any existing tile
 			tile_map.erase_cell(pos)
-			# Then set the new tile
-			tile_map.set_cell(pos, tileset_source, atlas_coords, 0)
+			# Then set the new tile with explicit alternative
+			tile_map.set_cell(pos, tileset_source, atlas_coords, 0, 0)
 			success = true
+			print("Successfully synced tile at pos: ", pos)
 		else:
 			push_error("Invalid tile data for sync coords: " + str(atlas_coords))
+	else:
+		print("Tile not found in source for sync coords: ", atlas_coords)
 	
 	if !success:
 		# If original coordinates failed, determine terrain type from coordinate ranges
 		if terrain_type.is_empty():
 			if atlas_coords.x <= 3:
 				terrain_type = "grass"
+				print("Fallback to grass based on coords")
 			elif atlas_coords.x <= 5:
 				terrain_type = "water"
+				print("Fallback to water based on coords")
 			elif atlas_coords.x <= 7:
 				terrain_type = "sand"
+				print("Fallback to sand based on coords")
 			elif atlas_coords.x <= 9:
 				terrain_type = "cement"
+				print("Fallback to cement based on coords")
 			else:
 				terrain_type = "grass"  # Default fallback
+				print("Using default grass fallback")
 		
 		# Get alternative coordinates based on terrain type
 		var alternative_coords = null
 		match terrain_type:
-			"grass": alternative_coords = grassAtlasCoords[0]
-			"water": alternative_coords = waterCoors[0]
-			"sand": alternative_coords = sandCoords[0]
-			"cement": alternative_coords = cementCoords[0]
-			"fence": alternative_coords = wallCoords[0]
+			"grass": 
+				alternative_coords = grassAtlasCoords[0]
+				print("Using grass alternative in sync: ", alternative_coords)
+			"water": 
+				alternative_coords = waterCoors[0]
+				print("Using water alternative in sync: ", alternative_coords)
+			"sand": 
+				alternative_coords = sandCoords[0]
+				print("Using sand alternative in sync: ", alternative_coords)
+			"cement": 
+				alternative_coords = cementCoords[0]
+				print("Using cement alternative in sync: ", alternative_coords)
+			"fence": 
+				alternative_coords = wallCoords[0]
+				print("Using fence alternative in sync: ", alternative_coords)
 		
 		if alternative_coords and source.has_tile(alternative_coords):
 			var tile_data = source.get_tile_data(alternative_coords, 0)
@@ -222,11 +266,14 @@ func sync_tile(pos: Vector2i, atlas_coords: Vector2i):
 				print("Using alternative coordinates in sync for ", terrain_type, ": ", alternative_coords)
 				# Use erase_cell first to clear any existing tile
 				tile_map.erase_cell(pos)
-				# Then set the new tile
-				tile_map.set_cell(pos, tileset_source, alternative_coords, 0)
+				# Then set the new tile with explicit alternative
+				tile_map.set_cell(pos, tileset_source, alternative_coords, 0, 0)
 				success = true
+				print("Successfully synced alternative tile at pos: ", pos)
 			else:
 				push_error("Invalid tile data for alternative sync coords: " + str(alternative_coords))
+		else:
+			push_error("Alternative coordinates not found in source for sync: " + str(alternative_coords))
 	
 	if success:
 		terrain_data[pos] = terrain_type
