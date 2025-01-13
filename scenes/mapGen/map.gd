@@ -7,7 +7,7 @@ var sandCoords = [Vector2i(4,0), Vector2i(5,0)]
 var cementCoords = [Vector2i(6,0), Vector2i(7,0), Vector2i(8,0), Vector2i(9,0)]
 var wallCoords = [Vector2i(8,12)]
 var noise = FastNoiseLite.new()
-var tileset_source = 1
+var tileset_source = 0
 # Noise parameters
 var tile_size = 64
 var map_width = Constants.MAP_SIZE.x
@@ -54,8 +54,13 @@ func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
 		push_error("Cannot set tile - TileMap node not found!")
 		return
 		
-	# Set the base tile
-	tile_map.set_cell(pos, tileset_source, atlas_coords)
+	# Set the base tile with error checking
+	var source_id = tileset_source
+	if tile_map.tile_set and tile_map.tile_set.has_source(source_id):
+		tile_map.set_cell(pos, source_id, atlas_coords)
+	else:
+		push_error("Invalid tileset source ID: ", source_id)
+		return
 	
 	# Store the terrain type
 	terrain_data[pos] = tile_type
@@ -66,8 +71,14 @@ func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
 
 @rpc("authority", "call_remote", "reliable")
 func sync_tile(pos: Vector2i, atlas_coords: Vector2i):
-	# Clients receive the tile data from server
-	tile_map.set_cell(pos, tileset_source, atlas_coords)
+	# Clients receive the tile data from server with error checking
+	var source_id = tileset_source
+	if tile_map.tile_set and tile_map.tile_set.has_source(source_id):
+		tile_map.set_cell(pos, source_id, atlas_coords)
+	else:
+		push_error("Invalid tileset source ID in sync_tile: ", source_id)
+		return
+		
 	# Store terrain type based on atlas coords
 	if grassAtlasCoords.has(atlas_coords):
 		terrain_data[pos] = "grass"
