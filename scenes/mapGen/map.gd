@@ -15,11 +15,12 @@ var map_height = Constants.MAP_SIZE.y
 
 var walkable_tiles = []
 var terrain_data = {}  # Store terrain types for each tile
-@onready var tile_map = $TileMap
+@onready var tile_map = $TileMapLayer
 
 signal map_reset
 
 func _ready():
+	print("Map _ready called, is_server: ", multiplayer.is_server())
 	# Initialize noise for tinting - use same settings as terrain generation
 	noise.noise_type = FastNoiseLite.TYPE_PERLIN
 	noise.fractal_octaves = 4
@@ -29,10 +30,12 @@ func _ready():
 	
 	# Only generate if we're the server
 	if multiplayer.is_server():
+		print("Server generating initial map")
 		generateMap()
 
 # Called by Multihelper when client is ready to receive map
 func initialize_client():
+	print("Client initializing map")
 	clear_map()
 	request_map_data.rpc_id(1)
 
@@ -657,6 +660,7 @@ func sync_full_map(map_tiles: Array):
 		var tint = tile[2]
 		var terrain_type = tile[3]
 		
+		print("Setting tile at ", pos, " with atlas coords ", atlas_coords)
 		tile_map.set_cell(pos, tileset_source, atlas_coords)
 		var tile_data = tile_map.get_cell_tile_data(pos)
 		if tile_data:
@@ -679,12 +683,18 @@ func send_full_map_to_client(peer_id: int):
 				var terrain_type = terrain_data.get(pos, "")
 				map_tiles.append([pos, atlas_coords, tint, terrain_type])
 	
-	print("Sending ", map_tiles.size(), " tiles to client")
+	print("Server has ", map_tiles.size(), " tiles to send")
+	if map_tiles.size() > 0:
+		print("Sample tile data: ", map_tiles[0])
 	sync_full_map.rpc_id(peer_id, map_tiles)
 	sync_walkable_tiles.rpc_id(peer_id, walkable_tiles)
 
 @rpc("any_peer", "call_remote", "reliable")
 func request_map_data():
+	print("Received map data request")
 	if multiplayer.is_server():
 		var peer_id = multiplayer.get_remote_sender_id()
+		print("Server sending map data to peer ", peer_id)
 		send_full_map_to_client(peer_id)
+	else:
+		print("Non-server received map data request")
