@@ -61,6 +61,11 @@ func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
 		push_error("Cannot set tile - TileMap node not found!")
 		return
 		
+	# Validate position is within map bounds
+	if pos.x < 0 or pos.x >= map_width or pos.y < 0 or pos.y >= map_height:
+		push_error("Tile position out of bounds: " + str(pos))
+		return
+		
 	# Validate atlas coordinates
 	var valid_coords = false
 	match tile_type:
@@ -72,9 +77,20 @@ func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
 	
 	if !valid_coords:
 		push_error("Invalid atlas coordinates for tile type: " + tile_type + " coords: " + str(atlas_coords))
+		# Use fallback tile if available
+		match tile_type:
+			"grass": atlas_coords = grassAtlasCoords[0]
+			"water": atlas_coords = waterCoors[0]
+			"sand": atlas_coords = sandCoords[0]
+			"cement": atlas_coords = cementCoords[0]
+			"fence": atlas_coords = wallCoords[0]
+		print("Using fallback tile: ", atlas_coords)
+		
+	# Verify the tile exists in the tileset
+	if !tile_map.tile_set or !tile_map.tile_set.has_source(tileset_source):
+		push_error("Invalid tileset source: ", tileset_source)
 		return
 		
-	print("Setting tile at pos: ", pos, " type: ", tile_type, " atlas_coords: ", atlas_coords)
 	# Set the base tile
 	tile_map.set_cell(pos, tileset_source, atlas_coords)
 	
@@ -89,6 +105,11 @@ func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
 func sync_tile(pos: Vector2i, atlas_coords: Vector2i):
 	if !tile_map:
 		push_error("Cannot sync tile - TileMap node not found!")
+		return
+		
+	# Validate position is within map bounds
+	if pos.x < 0 or pos.x >= map_width or pos.y < 0 or pos.y >= map_height:
+		push_error("Sync tile position out of bounds: " + str(pos))
 		return
 		
 	# Validate the atlas coordinates exist in one of our valid sets
@@ -113,6 +134,27 @@ func sync_tile(pos: Vector2i, atlas_coords: Vector2i):
 	
 	if !valid_coords:
 		push_error("Received invalid atlas coordinates in sync_tile: " + str(atlas_coords))
+		# Determine terrain type from coordinates and use fallback
+		if atlas_coords.x <= 3:
+			terrain_type = "grass"
+			atlas_coords = grassAtlasCoords[0]
+		elif atlas_coords.x <= 5:
+			terrain_type = "water"
+			atlas_coords = waterCoors[0]
+		elif atlas_coords.x <= 7:
+			terrain_type = "sand"
+			atlas_coords = sandCoords[0]
+		elif atlas_coords.x <= 9:
+			terrain_type = "cement"
+			atlas_coords = cementCoords[0]
+		else:
+			terrain_type = "grass"  # Default fallback
+			atlas_coords = grassAtlasCoords[0]
+		print("Using fallback tile for sync: ", atlas_coords)
+		
+	# Verify the tile exists in the tileset
+	if !tile_map.tile_set or !tile_map.tile_set.has_source(tileset_source):
+		push_error("Invalid tileset source in sync_tile: ", tileset_source)
 		return
 		
 	# Set the tile with validated coordinates
