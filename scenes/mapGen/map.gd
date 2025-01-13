@@ -645,13 +645,13 @@ func reset_map_rpc():
 	reset_map()
 
 @rpc("authority", "call_remote", "reliable")
-func sync_full_map(tile_data: Array):
+func sync_full_map(map_tiles: Array):
 	# Receive full map data from server
-	print("Received map data with ", tile_data.size(), " tiles")
+	print("Received map data with ", map_tiles.size(), " tiles")
 	clear_map()
 	
-	# tile_data is array of [pos, atlas_coords, tint, terrain_type]
-	for tile in tile_data:
+	# map_tiles is array of [pos, atlas_coords, tint, terrain_type]
+	for tile in map_tiles:
 		var pos = tile[0]
 		var atlas_coords = tile[1]
 		var tint = tile[2]
@@ -668,19 +668,19 @@ func send_full_map_to_client(peer_id: int):
 		return
 		
 	print("Sending map data to client ", peer_id)
-	var tile_data = []
+	var map_tiles = []
 	for y in range(map_height):
 		for x in range(map_width):
 			var pos = Vector2i(x, y)
 			var atlas_coords = tile_map.get_cell_atlas_coords(pos)
 			if atlas_coords != Vector2i(-1, -1):  # If tile exists
-				var tile_data_obj = tile_map.get_cell_tile_data(pos)
-				var tint = tile_data_obj.modulate if tile_data_obj else Color.WHITE
+				var tile_data = tile_map.get_cell_tile_data(pos)
+				var tint = tile_data.modulate if tile_data else Color.WHITE
 				var terrain_type = terrain_data.get(pos, "")
-				tile_data.append([pos, atlas_coords, tint, terrain_type])
+				map_tiles.append([pos, atlas_coords, tint, terrain_type])
 	
-	print("Sending ", tile_data.size(), " tiles to client")
-	sync_full_map.rpc_id(peer_id, tile_data)
+	print("Sending ", map_tiles.size(), " tiles to client")
+	sync_full_map.rpc_id(peer_id, map_tiles)
 	sync_walkable_tiles.rpc_id(peer_id, walkable_tiles)
 
 @rpc("any_peer", "call_remote", "reliable")
