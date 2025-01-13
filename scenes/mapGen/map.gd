@@ -37,22 +37,22 @@ func _ready():
 		push_error("Could not get tileset source")
 		return
 		
-	# Validate that our basic tiles exist
+	# Validate that our basic tiles exist without checking tile data
 	var missing_tiles = []
 	for coords in grassAtlasCoords:
-		if !source.has_tile(coords) or !source.get_tile_data(coords, 0):
+		if !source.has_tile(coords):
 			missing_tiles.append("grass:" + str(coords))
 	for coords in waterCoors:
-		if !source.has_tile(coords) or !source.get_tile_data(coords, 0):
+		if !source.has_tile(coords):
 			missing_tiles.append("water:" + str(coords))
 	for coords in sandCoords:
-		if !source.has_tile(coords) or !source.get_tile_data(coords, 0):
+		if !source.has_tile(coords):
 			missing_tiles.append("sand:" + str(coords))
 	for coords in cementCoords:
-		if !source.has_tile(coords) or !source.get_tile_data(coords, 0):
+		if !source.has_tile(coords):
 			missing_tiles.append("cement:" + str(coords))
 	for coords in wallCoords:
-		if !source.has_tile(coords) or !source.get_tile_data(coords, 0):
+		if !source.has_tile(coords):
 			missing_tiles.append("wall:" + str(coords))
 			
 	if missing_tiles.size() > 0:
