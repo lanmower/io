@@ -31,6 +31,8 @@ func _ready():
 		push_error("TileMap is missing required tileset source: ", tileset_source)
 		return
 		
+	print("TileMap node found and tileset source verified")
+	
 	# Initialize noise for tinting - use same settings as terrain generation
 	noise.noise_type = FastNoiseLite.TYPE_PERLIN
 	noise.fractal_octaves = 4
@@ -59,6 +61,7 @@ func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
 		push_error("Cannot set tile - TileMap node not found!")
 		return
 		
+	print("Setting tile at pos: ", pos, " type: ", tile_type, " atlas_coords: ", atlas_coords)
 	# Set the base tile
 	tile_map.set_cell(pos, tileset_source, atlas_coords)
 	
@@ -148,6 +151,7 @@ func generateMap():
 		sync_terrain_data.rpc(terrain_data)
 
 func generate_terrain():
+	print("Starting terrain generation")
 	# Clear walkable tiles at start
 	walkable_tiles.clear()
 	
@@ -157,6 +161,7 @@ func generate_terrain():
 	var terrain_types = {}  # Renamed from terrain_data to avoid confusion
 	var noise_data = {}
 	
+	print("Generating base terrain with noise seed: ", noise.seed)
 	# First pass: Generate base terrain
 	for y in range(map_height):
 		for x in range(map_width):
