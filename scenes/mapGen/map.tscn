@@ -8,5 +8,4 @@ script = ExtResource("1_gggpt")
 
 [node name="TileMap" type="TileMap" parent="."]
 tile_set = ExtResource("2_c3hbg")
-rendering_quadrant_size = 64
-navigation_visibility_mode = 1
+format = 2
