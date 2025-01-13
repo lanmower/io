@@ -15,12 +15,17 @@ var map_height = Constants.MAP_SIZE.y
 
 var walkable_tiles = []
 var terrain_data = {}  # Store terrain types for each tile
-@onready var tile_map = $TileMapLayer
+@onready var tile_map = $TileMap
 
 signal map_reset
 
 func _ready():
 	print("Map _ready called, is_server: ", multiplayer.is_server())
+	# Verify TileMap reference
+	if !tile_map:
+		push_error("TileMap node not found!")
+		return
+		
 	# Initialize noise for tinting - use same settings as terrain generation
 	noise.noise_type = FastNoiseLite.TYPE_PERLIN
 	noise.fractal_octaves = 4
@@ -40,6 +45,10 @@ func initialize_client():
 	request_map_data.rpc_id(1)
 
 func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
+	if !tile_map:
+		push_error("Cannot set tile - TileMap node not found!")
+		return
+		
 	# Set the base tile
 	tile_map.set_cell(pos, tileset_source, atlas_coords)
 	
@@ -103,6 +112,10 @@ func sync_tile(pos: Vector2i, atlas_coords: Vector2i, tint: Color):
 
 # Remove loadMap as it's no longer needed - clients only receive tiles from server
 func clear_map():
+	if !tile_map:
+		push_error("Cannot clear map - TileMap node not found!")
+		return
+		
 	terrain_data.clear()
 	walkable_tiles.clear()
 	for x in range(map_width):
@@ -649,6 +662,10 @@ func reset_map_rpc():
 
 @rpc("authority", "call_remote", "reliable")
 func sync_full_map(map_tiles: Array):
+	if !tile_map:
+		push_error("Cannot sync map - TileMap node not found!")
+		return
+		
 	# Receive full map data from server
 	print("Received map data with ", map_tiles.size(), " tiles")
 	clear_map()
