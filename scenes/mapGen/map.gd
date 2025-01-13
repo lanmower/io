@@ -1,11 +1,11 @@
 # godot 4.3
 extends Node2D
 
-var grassAtlasCoords = [Vector2i(0,0),Vector2i(1,0),Vector2i(2,0),Vector2i(3,0),Vector2i(16,0),Vector2i(17,0)]
-var waterCoors = [Vector2i(18,0), Vector2i(19,0)]
-var sandCoords = [Vector2i(4,0), Vector2i(5,0)]
-var cementCoords = [Vector2i(6,0), Vector2i(7,0), Vector2i(8,0), Vector2i(9,0)]
-var wallCoords = [Vector2i(8,12)]
+var grassAtlasCoords = [Vector2i(0,0), Vector2i(1,0), Vector2i(2,0), Vector2i(3,0)]
+var waterCoors = [Vector2i(4,0), Vector2i(5,0)]
+var sandCoords = [Vector2i(6,0), Vector2i(7,0)]
+var cementCoords = [Vector2i(8,0), Vector2i(9,0)]
+var wallCoords = [Vector2i(8,1)]
 var noise = FastNoiseLite.new()
 var tileset_source = 1
 # Noise parameters
@@ -61,6 +61,19 @@ func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
 		push_error("Cannot set tile - TileMap node not found!")
 		return
 		
+	# Validate atlas coordinates
+	var valid_coords = false
+	match tile_type:
+		"grass": valid_coords = grassAtlasCoords.has(atlas_coords)
+		"water": valid_coords = waterCoors.has(atlas_coords)
+		"sand": valid_coords = sandCoords.has(atlas_coords)
+		"cement": valid_coords = cementCoords.has(atlas_coords)
+		"fence": valid_coords = wallCoords.has(atlas_coords)
+	
+	if !valid_coords:
+		push_error("Invalid atlas coordinates for tile type: " + tile_type + " coords: " + str(atlas_coords))
+		return
+		
 	print("Setting tile at pos: ", pos, " type: ", tile_type, " atlas_coords: ", atlas_coords)
 	# Set the base tile
 	tile_map.set_cell(pos, tileset_source, atlas_coords)
@@ -74,17 +87,37 @@ func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
 
 @rpc("authority", "call_remote", "reliable")
 func sync_tile(pos: Vector2i, atlas_coords: Vector2i):
-	# Clients receive the tile data from server
-	tile_map.set_cell(pos, tileset_source, atlas_coords)
-	# Store terrain type based on atlas coords
+	if !tile_map:
+		push_error("Cannot sync tile - TileMap node not found!")
+		return
+		
+	# Validate the atlas coordinates exist in one of our valid sets
+	var valid_coords = false
+	var terrain_type = ""
+	
 	if grassAtlasCoords.has(atlas_coords):
-		terrain_data[pos] = "grass"
+		valid_coords = true
+		terrain_type = "grass"
 	elif waterCoors.has(atlas_coords):
-		terrain_data[pos] = "water"
+		valid_coords = true
+		terrain_type = "water"
 	elif sandCoords.has(atlas_coords):
-		terrain_data[pos] = "sand"
+		valid_coords = true
+		terrain_type = "sand"
 	elif cementCoords.has(atlas_coords):
-		terrain_data[pos] = "cement"
+		valid_coords = true
+		terrain_type = "cement"
+	elif wallCoords.has(atlas_coords):
+		valid_coords = true
+		terrain_type = "fence"
+	
+	if !valid_coords:
+		push_error("Received invalid atlas coordinates in sync_tile: " + str(atlas_coords))
+		return
+		
+	# Set the tile with validated coordinates
+	tile_map.set_cell(pos, tileset_source, atlas_coords)
+	terrain_data[pos] = terrain_type
 
 # Remove loadMap as it's no longer needed - clients only receive tiles from server
 func clear_map():
