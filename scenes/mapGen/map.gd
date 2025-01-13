@@ -31,7 +31,35 @@ func _ready():
 		push_error("TileMap is missing required tileset source: ", tileset_source)
 		return
 		
-	print("TileMap node found and tileset source verified")
+	# Get the tileset source and validate it
+	var source = tile_map.tile_set.get_source(tileset_source)
+	if !source:
+		push_error("Could not get tileset source")
+		return
+		
+	# Validate that our basic tiles exist
+	var missing_tiles = []
+	for coords in grassAtlasCoords:
+		if !source.has_tile(coords) or !source.get_tile_data(coords, 0):
+			missing_tiles.append("grass:" + str(coords))
+	for coords in waterCoors:
+		if !source.has_tile(coords) or !source.get_tile_data(coords, 0):
+			missing_tiles.append("water:" + str(coords))
+	for coords in sandCoords:
+		if !source.has_tile(coords) or !source.get_tile_data(coords, 0):
+			missing_tiles.append("sand:" + str(coords))
+	for coords in cementCoords:
+		if !source.has_tile(coords) or !source.get_tile_data(coords, 0):
+			missing_tiles.append("cement:" + str(coords))
+	for coords in wallCoords:
+		if !source.has_tile(coords) or !source.get_tile_data(coords, 0):
+			missing_tiles.append("wall:" + str(coords))
+			
+	if missing_tiles.size() > 0:
+		push_error("Missing required tiles: " + str(missing_tiles))
+		return
+		
+	print("TileMap node found and tileset source verified with all required tiles")
 	
 	# Initialize noise for tinting - use same settings as terrain generation
 	noise.noise_type = FastNoiseLite.TYPE_PERLIN
@@ -74,10 +102,18 @@ func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
 		
 	# Try to set the tile with the original coordinates
 	var success = false
+	
+	# Validate the tile exists in the source
 	if source.has_tile(atlas_coords):
-		tile_map.set_cell(pos, tileset_source, atlas_coords)
-		success = true
-	else:
+		# Get the tile data to ensure it's valid
+		var tile_data = source.get_tile_data(atlas_coords, 0)
+		if tile_data:
+			tile_map.set_cell(pos, tileset_source, atlas_coords)
+			success = true
+		else:
+			push_error("Invalid tile data for coords: " + str(atlas_coords))
+	
+	if !success:
 		# If the original coordinates failed, try alternative coordinates
 		var alternative_coords = null
 		match tile_type:
@@ -88,12 +124,13 @@ func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
 			"fence": alternative_coords = wallCoords[0]
 		
 		if alternative_coords and source.has_tile(alternative_coords):
-			print("Using alternative coordinates for ", tile_type, ": ", alternative_coords)
-			tile_map.set_cell(pos, tileset_source, alternative_coords)
-			success = true
-		else:
-			push_error("No valid tile coordinates found for type: " + tile_type)
-			return
+			var tile_data = source.get_tile_data(alternative_coords, 0)
+			if tile_data:
+				print("Using alternative coordinates for ", tile_type, ": ", alternative_coords)
+				tile_map.set_cell(pos, tileset_source, alternative_coords)
+				success = true
+			else:
+				push_error("Invalid tile data for alternative coords: " + str(alternative_coords))
 	
 	if success:
 		# Store the terrain type
@@ -102,6 +139,8 @@ func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
 		# If we're the server, synchronize to clients
 		if multiplayer.is_server():
 			sync_tile.rpc(pos, atlas_coords)
+	else:
+		push_error("Failed to set tile at pos: " + str(pos) + " type: " + tile_type)
 
 @rpc("authority", "call_remote", "reliable")
 func sync_tile(pos: Vector2i, atlas_coords: Vector2i):
@@ -138,9 +177,14 @@ func sync_tile(pos: Vector2i, atlas_coords: Vector2i):
 	
 	# Try to set the tile
 	if source.has_tile(atlas_coords):
-		tile_map.set_cell(pos, tileset_source, atlas_coords)
-		success = true
-	else:
+		var tile_data = source.get_tile_data(atlas_coords, 0)
+		if tile_data:
+			tile_map.set_cell(pos, tileset_source, atlas_coords)
+			success = true
+		else:
+			push_error("Invalid tile data for sync coords: " + str(atlas_coords))
+	
+	if !success:
 		# If original coordinates failed, determine terrain type from coordinate ranges
 		if terrain_type.is_empty():
 			if atlas_coords.x <= 3:
@@ -164,15 +208,18 @@ func sync_tile(pos: Vector2i, atlas_coords: Vector2i):
 			"fence": alternative_coords = wallCoords[0]
 		
 		if alternative_coords and source.has_tile(alternative_coords):
-			print("Using alternative coordinates in sync for ", terrain_type, ": ", alternative_coords)
-			tile_map.set_cell(pos, tileset_source, alternative_coords)
-			success = true
-		else:
-			push_error("No valid tile coordinates found in sync for type: " + terrain_type)
-			return
+			var tile_data = source.get_tile_data(alternative_coords, 0)
+			if tile_data:
+				print("Using alternative coordinates in sync for ", terrain_type, ": ", alternative_coords)
+				tile_map.set_cell(pos, tileset_source, alternative_coords)
+				success = true
+			else:
+				push_error("Invalid tile data for alternative sync coords: " + str(alternative_coords))
 	
 	if success:
 		terrain_data[pos] = terrain_type
+	else:
+		push_error("Failed to sync tile at pos: " + str(pos) + " type: " + terrain_type)
 
 # Remove loadMap as it's no longer needed - clients only receive tiles from server
 func clear_map():
