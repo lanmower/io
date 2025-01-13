@@ -66,6 +66,11 @@ func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
 		push_error("Tile position out of bounds: " + str(pos))
 		return
 		
+	# Validate atlas coordinates are non-negative
+	if atlas_coords.x < 0 or atlas_coords.y < 0:
+		push_error("Invalid negative atlas coordinates: " + str(atlas_coords))
+		return
+		
 	# Validate atlas coordinates
 	var valid_coords = false
 	match tile_type:
@@ -91,6 +96,17 @@ func set_tile(pos: Vector2i, tile_type: String, atlas_coords: Vector2i) -> void:
 		push_error("Invalid tileset source: ", tileset_source)
 		return
 		
+	# Additional validation for tile coordinates
+	var source = tile_map.tile_set.get_source(tileset_source)
+	if !source:
+		push_error("Could not get tileset source: ", tileset_source)
+		return
+		
+	# Check if the atlas coordinates are within the tileset bounds
+	if !source.has_tile(atlas_coords):
+		push_error("Atlas coordinates not found in tileset: " + str(atlas_coords))
+		return
+		
 	# Set the base tile
 	tile_map.set_cell(pos, tileset_source, atlas_coords)
 	
@@ -110,6 +126,11 @@ func sync_tile(pos: Vector2i, atlas_coords: Vector2i):
 	# Validate position is within map bounds
 	if pos.x < 0 or pos.x >= map_width or pos.y < 0 or pos.y >= map_height:
 		push_error("Sync tile position out of bounds: " + str(pos))
+		return
+		
+	# Validate atlas coordinates are non-negative
+	if atlas_coords.x < 0 or atlas_coords.y < 0:
+		push_error("Invalid negative atlas coordinates in sync_tile: " + str(atlas_coords))
 		return
 		
 	# Validate the atlas coordinates exist in one of our valid sets
@@ -155,6 +176,17 @@ func sync_tile(pos: Vector2i, atlas_coords: Vector2i):
 	# Verify the tile exists in the tileset
 	if !tile_map.tile_set or !tile_map.tile_set.has_source(tileset_source):
 		push_error("Invalid tileset source in sync_tile: ", tileset_source)
+		return
+		
+	# Additional validation for tile coordinates
+	var source = tile_map.tile_set.get_source(tileset_source)
+	if !source:
+		push_error("Could not get tileset source in sync_tile: ", tileset_source)
+		return
+		
+	# Check if the atlas coordinates are within the tileset bounds
+	if !source.has_tile(atlas_coords):
+		push_error("Atlas coordinates not found in tileset during sync: " + str(atlas_coords))
 		return
 		
 	# Set the tile with validated coordinates
