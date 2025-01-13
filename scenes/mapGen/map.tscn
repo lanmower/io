@@ -7,7 +7,6 @@
 script = ExtResource("1_gggpt")
 
 [node name="TileMap" type="TileMap" parent="."]
-use_parent_material = true
 tile_set = ExtResource("2_c3hbg")
 rendering_quadrant_size = 64
 navigation_visibility_mode = 1
