@@ -27,6 +27,7 @@ func _ready():
 		setupServerCamera()
 	$dayNight.time_tick.connect(_on_time_tick)
 	$dayNight.time_tick.connect(%DayNightCycleUI.set_daytime)
+	Multihelper.player_spawned.connect(_on_player_spawned)
 	createHUD()
 
 func _on_time_tick(day: int, hour: int, _minute: int):
@@ -171,3 +172,9 @@ func decreasePlayerEnemyCount(pId) -> void:
 func _on_enemy_spawn_timer_timeout():
 	if multiplayer.is_server():
 		trySpawnEnemies()
+
+func _on_player_spawned(_peer_id: int, player_info: Dictionary):
+	# Update UI or handle any other player spawn related logic
+	if "score" in player_info:
+		# Update player score display
+		pass

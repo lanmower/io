@@ -1,6 +1,6 @@
 extends Node
 
-signal player_spawned(id: int)
+signal player_spawned(peer_id: int, player_info: Dictionary)
 signal player_connected(id: int)
 signal player_disconnected(id: int)
 
@@ -14,9 +14,9 @@ func _ready():
 	multiplayer.peer_disconnected.connect(_on_player_disconnected)
 
 func _on_player_connected(id: int):
-	emit_signal("player_connected", id)
+	player_connected.emit(id)
 
 func _on_player_disconnected(id: int):
-	emit_signal("player_disconnected", id)
+	player_disconnected.emit(id)
 	if players.has(id):
 		players.erase(id) 

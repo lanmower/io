@@ -1,3 +1,12 @@
+# godot 4.3
+extends CanvasModulate
+
+signal time_tick(day: int, hour: int, minute: int)
+
+var current_day: int = 0
+var current_hour: int = 6  # Start at 6 AM
+var current_minute: int = 0
+
 @rpc("authority", "call_local", "reliable")
 func reset_time():
 	current_day = 0
