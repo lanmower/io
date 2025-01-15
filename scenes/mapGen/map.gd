@@ -28,11 +28,16 @@ func _ready():
 	# Verify TileMap references
 	if !tile_map_layer or !tile_map:
 		push_error("TileMap or TileMapLayer node not found!")
+		print("tile_map_layer: ", tile_map_layer, ", tile_map: ", tile_map)
 		return
 		
 	# Verify tileset source
 	if !tile_map.tile_set or !tile_map.tile_set.has_source(tileset_source):
 		push_error("TileMap is missing required tileset source: ", tileset_source)
+		var has_source = false
+		if tile_map.tile_set:
+			has_source = tile_map.tile_set.has_source(tileset_source)
+		print("tile_set: ", tile_map.tile_set, ", has_source: ", has_source)
 		return
 		
 	# Get the tileset source and validate it
@@ -213,31 +218,38 @@ func send_full_map_to_client(peer_id: int):
 		
 	print("Preparing map data for client ", peer_id)
 	var map_tiles = []
+	var total_cells = 0
+	var valid_cells = 0
+	
 	for y in range(map_height):
 		for x in range(map_width):
+			total_cells += 1
 			var pos = Vector2i(x, y)
 			var source_id = tile_map_layer.get_cell_source_id(pos)
 			if source_id != -1:  # If tile exists
+				valid_cells += 1
 				var atlas_coords = tile_map_layer.get_cell_atlas_coords(pos)
 				var terrain_type = terrain_data.get(pos, "")
 				map_tiles.append([pos, atlas_coords, terrain_type])
 	
+	print("Server checked ", total_cells, " cells, found ", valid_cells, " valid cells")
 	print("Server sending ", map_tiles.size(), " tiles to client ", peer_id)
+	print("Current terrain_data size: ", terrain_data.size())
+	
 	if map_tiles.size() == 0:
 		push_error("No tiles to send! Map may not be generated yet.")
-		# Try to regenerate the map
-		if !terrain_data.size():
-			print("Regenerating map before sending...")
-			generateMap()
-			# Rebuild map_tiles array after regeneration
-			for y in range(map_height):
-				for x in range(map_width):
-					var pos = Vector2i(x, y)
-					var source_id = tile_map_layer.get_cell_source_id(pos)
-					if source_id != -1:
-						var atlas_coords = tile_map_layer.get_cell_atlas_coords(pos)
-						var terrain_type = terrain_data.get(pos, "")
-						map_tiles.append([pos, atlas_coords, terrain_type])
+		print("Attempting to regenerate map...")
+		generateMap()
+		# Rebuild map_tiles array after regeneration
+		for y in range(map_height):
+			for x in range(map_width):
+				var pos = Vector2i(x, y)
+				var source_id = tile_map_layer.get_cell_source_id(pos)
+				if source_id != -1:
+					var atlas_coords = tile_map_layer.get_cell_atlas_coords(pos)
+					var terrain_type = terrain_data.get(pos, "")
+					map_tiles.append([pos, atlas_coords, terrain_type])
+		print("After regeneration: ", map_tiles.size(), " tiles")
 	
 	if map_tiles.size() > 0:
 		print("First tile data: pos=", map_tiles[0][0], " atlas=", map_tiles[0][1], " type=", map_tiles[0][2])
@@ -257,6 +269,8 @@ func sync_full_map(map_tiles: Array):
 	
 	# map_tiles is array of [pos, atlas_coords, terrain_type]
 	var tiles_placed = 0
+	var errors = 0
+	
 	for tile in map_tiles:
 		var pos = tile[0]
 		var atlas_coords = tile[1]
@@ -264,26 +278,38 @@ func sync_full_map(map_tiles: Array):
 		
 		if pos.x >= 0 and pos.x < map_width and pos.y >= 0 and pos.y < map_height:
 			tile_map_layer.set_cell(pos, tileset_source, atlas_coords)
-			if terrain_type:
-				terrain_data[pos] = terrain_type
-			tiles_placed += 1
+			var new_source_id = tile_map_layer.get_cell_source_id(pos)
+			
+			if new_source_id == -1:
+				errors += 1
+				print("Failed to place tile at pos: ", pos, " atlas_coords: ", atlas_coords)
+			else:
+				tiles_placed += 1
+				if terrain_type:
+					terrain_data[pos] = terrain_type
 			
 			if tiles_placed == 1 or tiles_placed % 1000 == 0:
-				print("Client progress: placed ", tiles_placed, " tiles")
+				print("Client progress: placed ", tiles_placed, " tiles, errors: ", errors)
 	
-	print("Client finished processing map data, placed ", tiles_placed, " tiles")
+	print("Client finished processing map data:")
+	print("- Tiles placed: ", tiles_placed)
+	print("- Errors: ", errors)
+	print("- Terrain data size: ", terrain_data.size())
+	
 	if tiles_placed == 0:
 		print("Warning: No tiles were placed! Requesting map data again...")
 		await get_tree().create_timer(1.0).timeout
 		request_map_data.rpc_id(1)
 
 func generate_terrain():
-	print("Starting terrain generation")
+	print("Starting terrain generation with seed: ", noise.seed)
 	# Clear walkable tiles at start
 	walkable_tiles.clear()
 	
 	# First pass: Generate basic terrain with more water
 	var terrain_types = {}
+	print("Generating basic terrain...")
+	
 	for x in range(map_width):
 		for y in range(map_height):
 			var pos = Vector2i(x, y)
@@ -295,135 +321,31 @@ func generate_terrain():
 				terrain_types[pos] = "grass"
 				walkable_tiles.append(pos)
 	
-	# Second pass: Generate beaches
-	for pos in terrain_types.keys():
-		if terrain_types[pos] != "water":
-			continue
-			
-		# Check neighbors for grass in a wider radius
-		for dx in [-2, -1, 0, 1, 2]:  # Increased radius
-			for dy in [-2, -1, 0, 1, 2]:
-				if dx == 0 and dy == 0:
-					continue
-					
-				var check_pos = pos + Vector2i(dx, dy)
-				if check_pos.x < 0 or check_pos.x >= map_width or check_pos.y < 0 or check_pos.y >= map_height:
-					continue
-					
-				if terrain_types.get(check_pos, "") == "grass":
-					terrain_types[pos] = "sand"
-					break
-			if terrain_types[pos] == "sand":
-				break
-	
-	# Third pass: Generate cement regions with adjusted parameters
-	var cement_regions = []
-	var cement_noise = FastNoiseLite.new()
-	cement_noise.seed = noise.seed + 1
-	cement_noise.frequency = 0.05
-	
-	var cement_threshold = 0.4  # Lowered threshold for more cement regions
-	var min_cement_size = 8  # Increased minimum size
-	var max_cement_size = 20  # Increased maximum size
-	
-	var visited_cement = {}
-	
-	for x in range(map_width):
-		for y in range(map_height):
-			var pos = Vector2i(x, y)
-			if visited_cement.has(pos):
-				continue
-				
-			var cement_value = cement_noise.get_noise_2d(x * 0.1, y * 0.1)
-			if cement_value > cement_threshold and terrain_types[pos] == "grass":
-				# Start a new cement region
-				var size_x = randi_range(min_cement_size, max_cement_size)
-				var size_y = randi_range(min_cement_size, max_cement_size)
-				
-				# Create region rect
-				var region = Rect2i(pos, Vector2i(size_x, size_y))
-				
-				# Ensure region is within map bounds
-				region = region.intersection(Rect2i(0, 0, map_width, map_height))
-				
-				# Mark all tiles in region as cement
-				for rx in range(region.position.x, region.end.x):
-					for ry in range(region.position.y, region.end.y):
-						var region_pos = Vector2i(rx, ry)
-						if terrain_types.get(region_pos, "") == "grass":
-							terrain_types[region_pos] = "cement"
-							visited_cement[region_pos] = true
-							# Remove cement positions from walkable tiles
-							if walkable_tiles.has(region_pos):
-								walkable_tiles.erase(region_pos)
-				
-				cement_regions.append(region)
+	print("Basic terrain generated. Walkable tiles: ", walkable_tiles.size())
+	print("Applying terrain to tilemap...")
 	
 	# Apply terrain to tilemap
+	var tiles_set = 0
 	for pos in terrain_types:
 		match terrain_types[pos]:
 			"grass":
 				tile_map_layer.set_cell(pos, tileset_source, grassAtlasCoords.pick_random())
+				tiles_set += 1
 			"water":
 				tile_map_layer.set_cell(pos, tileset_source, waterCoors.pick_random())
+				tiles_set += 1
 			"sand":
 				tile_map_layer.set_cell(pos, tileset_source, sandCoords.pick_random())
+				tiles_set += 1
 			"cement":
 				tile_map_layer.set_cell(pos, tileset_source, cementCoords.pick_random())
+				tiles_set += 1
 	
-	# Add fences around cement regions
-	add_fences_to_cement(terrain_types, cement_regions)
-	
-	# Add beaches around cement
-	add_beaches_around_cement(cement_regions)
+	print("Tiles set in tilemap: ", tiles_set)
 	
 	# Store terrain data
-	terrain_data = terrain_types
-	
-	# Find islands
-	var islands = find_islands()
-	
-	# If there are multiple islands, connect them
-	if islands.size() > 1:
-		print("Found ", islands.size(), " islands, connecting them")
-		for i in range(islands.size() - 1):
-			connect_two_islands(islands[i], islands[i + 1])
-	
-	# Update walkable tiles after all modifications
-	walkable_tiles.clear()
-	for x in range(map_width):
-		for y in range(map_height):
-			var pos = Vector2i(x, y)
-			var tile_data = tile_map_layer.get_cell_tile_data(pos)
-			if tile_data:
-				var coords = tile_map_layer.get_cell_atlas_coords(pos)
-				if grassAtlasCoords.has(coords):
-					walkable_tiles.append(pos)
-	
-	# Verify walkable tiles
-	print("Final walkable tiles count: ", walkable_tiles.size())
-	
-	# Update noise data for tinting
-	var noise_data = {}
-	for x in range(map_width):
-		for y in range(map_height):
-			var pos = Vector2i(x, y)
-			var tile_data = tile_map_layer.get_cell_tile_data(pos)
-			if tile_data:
-				var coords = tile_map_layer.get_cell_atlas_coords(pos)
-				if grassAtlasCoords.has(coords):
-					terrain_data[pos] = "grass"
-				elif waterCoors.has(coords):
-					terrain_data[pos] = "water"
-				elif sandCoords.has(coords):
-					terrain_data[pos] = "sand"
-				elif cementCoords.has(coords):
-					terrain_data[pos] = "cement"
-				elif wallCoords.has(coords):
-					terrain_data[pos] = "fence"
-				else:
-					terrain_data[pos] = "water"
-				noise_data[pos] = noise.get_noise_2d(x * 0.1, y * 0.1)
+	terrain_data = terrain_types.duplicate()
+	print("Terrain data size: ", terrain_data.size())
 
 func add_fences_to_cement(terrain_types: Dictionary, cement_regions: Array) -> void:
 	for region in cement_regions:
