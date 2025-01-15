@@ -206,18 +206,29 @@ func requestSpawn(playerName, id, characterFile):
 
 @rpc("any_peer", "call_local", "reliable")
 func spawnPlayer(playerName, id, characterFile):
+	if !main:
+		push_error("Cannot spawn player - main scene not found!")
+		return
+		
 	var newPlayer := playerScenePath.instantiate()
 	newPlayer.playerName = playerName
 	newPlayer.characterFile = characterFile
 	newPlayer.name = str(id)
 	main.get_node("Players").add_child(newPlayer)
 	
+	# Get map reference
+	if !map:
+		map = main.get_node("Map")
+	if !map or !map.tile_map:
+		push_error("Cannot spawn player - map or tilemap not found!")
+		return
+	
 	# Get a valid spawn position on grass
 	var spawnPos = Vector2.ZERO
+	var found = false
 	
 	# First try: Use center of map and expand outward until we find grass
 	var center = Vector2i(map.map_width/2, map.map_height/2)
-	var found = false
 	
 	# Search in expanding square from center
 	for radius in range(20):  # Maximum search radius of 20 tiles
@@ -230,30 +241,32 @@ func spawnPlayer(playerName, id, characterFile):
 				if y < 0 or y >= map.map_height: continue
 				
 				var pos = Vector2i(x, y)
-				var tileCoords = map.tile_map.get_cell_atlas_coords(pos)
+				var atlas_coords = map.tile_map.get_cell_atlas_coords(0, pos)
 				
 				# Only spawn on grass tiles
-				if map.grassAtlasCoords.has(tileCoords):
+				if map.grassAtlasCoords.has(atlas_coords):
 					# Check surrounding tiles to make sure we're not near water
 					var is_safe = true
 					for dx in range(-2, 3):
 						for dy in range(-2, 3):
 							var check_pos = Vector2i(x + dx, y + dy)
 							if check_pos.x >= 0 and check_pos.x < map.map_width and check_pos.y >= 0 and check_pos.y < map.map_height:
-								var check_coords = map.tile_map.get_cell_atlas_coords(check_pos)
+								var check_coords = map.tile_map.get_cell_atlas_coords(0, check_pos)
 								if map.waterCoors.has(check_coords):
 									is_safe = false
 									break
 						if not is_safe: break
 					
 					if is_safe:
-						spawnPos = map.tile_map.map_to_local(pos)
+						# Convert tile position to world position
+						var world_pos = map.tile_map.map_to_local(pos)
+						spawnPos = Vector2(world_pos.x, world_pos.y)  # Ensure it's a Vector2
 						found = true
 						break
 			if found: break
 	
 	# Emergency fallback: Force create a safe grass area in the center
-	if spawnPos == Vector2.ZERO:
+	if !found:
 		print("Emergency: Creating safe spawn area in center")
 		var safe_center = Vector2i(map.map_width/2, map.map_height/2)
 		# Create a safe grass area (5x5)
@@ -261,10 +274,23 @@ func spawnPlayer(playerName, id, characterFile):
 			for dy in range(-2, 3):
 				var pos = safe_center + Vector2i(dx, dy)
 				if pos.x >= 0 and pos.x < map.map_width and pos.y >= 0 and pos.y < map.map_height:
-						map.set_tile(pos, "grass", map.grassAtlasCoords.pick_random())
-		spawnPos = map.tile_map.map_to_local(safe_center)
+					map.tile_map.set_cell(0, pos, map.tileset_source, map.grassAtlasCoords.pick_random())
+					map.terrain_data[pos] = "grass"
+		# Convert tile position to world position
+		var world_pos = map.tile_map.map_to_local(safe_center)
+		spawnPos = Vector2(world_pos.x, world_pos.y)  # Ensure it's a Vector2
+		found = true
 	
-	newPlayer.sendPos.rpc(spawnPos)
+	# Only send position if we found a valid spawn point and it's a valid Vector2
+	if found and spawnPos != Vector2.ZERO:
+		print("Spawning player at position: ", spawnPos)
+		# Ensure position is valid before sending
+		if typeof(spawnPos) == TYPE_VECTOR2:
+			newPlayer.sendPos.rpc(spawnPos)
+		else:
+			push_error("Invalid spawn position type: ", typeof(spawnPos))
+	else:
+		push_error("Failed to find valid spawn position for player ", id)
 
 @rpc("any_peer", "call_remote", "reliable")
 func showSpawnUI():
