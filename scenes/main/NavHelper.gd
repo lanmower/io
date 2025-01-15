@@ -77,7 +77,7 @@ func get_walkable_tiles_in_distance(player_tile_pos: Vector2i, min_distance: int
 func is_walkable(tile_pos: Vector2i) -> bool:
 	if !tilemap:
 		return false
-	var atlas_coord = tilemap.get_cell_atlas_coords(tile_pos)
+	var atlas_coord = tilemap.get_cell_atlas_coords(0, tile_pos, false)
 	# Check if it's a wall tile (8,12) or if it's not in WALKABLE_TILES
 	if atlas_coord == Vector2i(8,12) or not atlas_coord in WALKABLE_TILES:
 		return false
@@ -102,7 +102,7 @@ func get_neighbors(tile_pos: Vector2i) -> Array:
 
 	var valid_neighbors = []
 	for neighbor in neighbors:
-		if tilemap.get_cell_source_id(neighbor) != -1:  # Check if the cell is valid
+		if tilemap.get_cell_source_id(0, neighbor) != -1:  # Check if the cell is valid
 			valid_neighbors.append(neighbor)
 
 	return valid_neighbors

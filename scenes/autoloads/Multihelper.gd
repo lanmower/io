@@ -241,7 +241,7 @@ func spawnPlayer(playerName, id, characterFile):
 				if y < 0 or y >= map.map_height: continue
 				
 				var pos = Vector2i(x, y)
-				var atlas_coords = map.tile_map.get_cell_atlas_coords(0, pos)
+				var atlas_coords = map.tile_map.get_cell_atlas_coords(0, pos, false)  # layer 0, position, alternative=false
 				
 				# Only spawn on grass tiles
 				if map.grassAtlasCoords.has(atlas_coords):
@@ -251,7 +251,7 @@ func spawnPlayer(playerName, id, characterFile):
 						for dy in range(-2, 3):
 							var check_pos = Vector2i(x + dx, y + dy)
 							if check_pos.x >= 0 and check_pos.x < map.map_width and check_pos.y >= 0 and check_pos.y < map.map_height:
-								var check_coords = map.tile_map.get_cell_atlas_coords(0, check_pos)
+								var check_coords = map.tile_map.get_cell_atlas_coords(0, check_pos, false)  # layer 0, position, alternative=false
 								if map.waterCoors.has(check_coords):
 									is_safe = false
 									break

@@ -109,7 +109,7 @@ func send_full_map_to_client(peer_id: int):
 			var source_id = tile_map.get_cell_source_id(0, pos)
 			if source_id != -1:  # If tile exists
 				valid_cells += 1
-				var atlas_coords = tile_map.get_cell_atlas_coords(0, pos)
+				var atlas_coords = tile_map.get_cell_atlas_coords(0, pos, false)
 				var terrain_type = terrain_data.get(pos, "")
 				map_tiles.append([pos, atlas_coords, terrain_type])
 	
@@ -127,7 +127,7 @@ func send_full_map_to_client(peer_id: int):
 				var pos = Vector2i(x, y)
 				var source_id = tile_map.get_cell_source_id(0, pos)
 				if source_id != -1:
-					var atlas_coords = tile_map.get_cell_atlas_coords(0, pos)
+					var atlas_coords = tile_map.get_cell_atlas_coords(0, pos, false)
 					var terrain_type = terrain_data.get(pos, "")
 					map_tiles.append([pos, atlas_coords, terrain_type])
 		print("After regeneration: ", map_tiles.size(), " tiles")
@@ -194,7 +194,7 @@ func generateMap():
 		var tile_data = tile_map.get_cell_tile_data(0, pos)
 		if !tile_data:  # No tile at this position
 			return false
-		var coords = tile_map.get_cell_atlas_coords(0, pos)
+		var coords = tile_map.get_cell_atlas_coords(0, pos, false)
 		return not waterCoors.has(coords)
 	)
 	
