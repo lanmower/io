@@ -1,7 +1,7 @@
-[gd_scene load_steps=4 format=3 uid="uid://do5frseoo8sxj"]
+[gd_scene load_steps=4 format=3]
 
-[ext_resource type="Script" path="res://scenes/ui/spawn/spawnPlayer.gd" id="1_buuas"]
-[ext_resource type="Texture2D" uid="uid://d1sky2cvfvitg" path="res://assets/characters/bodies/1.png" id="2_r4dn6"]
+[ext_resource type="Script" path="res://scenes/ui/spawn/spawnPlayer.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/characters/bodies/1.png" id="2_body"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_qdlud"]
 bg_color = Color(0.180392, 0.180392, 0.180392, 1)
@@ -25,7 +25,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-script = ExtResource("1_buuas")
+script = ExtResource("1_script")
 
 [node name="PanelContainer" type="PanelContainer" parent="."]
 layout_mode = 1
@@ -84,7 +84,7 @@ text = "<"
 [node name="selectedBody" type="TextureRect" parent="PanelContainer/VBoxContainer/BodySelectBox"]
 unique_name_in_owner = true
 layout_mode = 2
-texture = ExtResource("2_r4dn6")
+texture = ExtResource("2_body")
 
 [node name="nextCharacterButton" type="Button" parent="PanelContainer/VBoxContainer/BodySelectBox"]
 layout_mode = 2

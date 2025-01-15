@@ -1,7 +1,7 @@
-[gd_scene load_steps=10 format=3 uid="uid://dagsu16arm3mv"]
+[gd_scene load_steps=10 format=3]
 
-[ext_resource type="Script" path="res://scenes/object/breakable.gd" id="1_2ysco"]
-[ext_resource type="Texture2D" uid="uid://b415lm6empgiw" path="res://assets/objects/tree1.png" id="1_dsonf"]
+[ext_resource type="Script" path="res://scenes/object/breakable.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/objects/tree1.png" id="2_tree"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_sene2"]
 radius = 48.8365
@@ -90,10 +90,10 @@ _data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
 point_count = 2
 
 [node name="Breakable" type="StaticBody2D" groups=["damageable"]]
-script = ExtResource("1_2ysco")
+script = ExtResource("1_script")
 
 [node name="Sprite" type="Sprite2D" parent="."]
-texture = ExtResource("1_dsonf")
+texture = ExtResource("2_tree")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("CircleShape2D_sene2")

@@ -3,16 +3,15 @@ extends Node
 
 var playerScenePath = preload("res://scenes/character/player.tscn")
 var isHost = false
-var mapSeed = randi()
+var mapSeed: int = 0
 var map: Node2D
 var main: Node2D
 var debug_camera_settings = null
 
-signal player_connected(peer_id)
-signal player_disconnected(peer_id)
+signal player_connected(id: int)
+signal player_disconnected(id: int)
 signal server_disconnected
 signal player_spawned(peer_id, player_info)
-signal player_despawned
 signal player_registered
 @warning_ignore("unused_signal")
 signal player_score_updated
@@ -73,7 +72,7 @@ func create_game():
 func remove_multiplayer_peer():
 	multiplayer.multiplayer_peer = null
 
-func _on_player_connected(id):
+func _on_player_connected(id: int):
 	print("player connected with id "+str(id)+" to "+str(multiplayer.get_unique_id()))
 
 @rpc("call_local" ,"any_peer", "reliable")
@@ -124,7 +123,7 @@ func _register_character(new_player_info):
 	player_spawned.emit(new_player_id, new_player_info)
 	player_registered.emit()
 
-func _on_player_disconnected(id):
+func _on_player_disconnected(id: int):
 	connectedPlayers.erase(id)
 	spawnedPlayers.erase(id)
 	syncedPlayers.erase(id)
@@ -214,7 +213,6 @@ func spawnPlayer(playerName, id, characterFile):
 	
 	# Get a valid spawn position on grass
 	var spawnPos = Vector2.ZERO
-	var valid_tiles = []
 	
 	# First try: Use center of map and expand outward until we find grass
 	var center = Vector2i(map.map_width/2, map.map_height/2)

@@ -1,10 +1,10 @@
 # godot 4.3
 extends StaticBody2D
 
-@export var objectId := "":
+@export var objectId: String = "":
 	set(value):
+		objectId = value
 		if value:
-			objectId = value
 			data = Items.objects[value]
 			hp = data["hp"]
 			$Sprite.texture = load("res://assets/objects/"+data["id"]+".png")

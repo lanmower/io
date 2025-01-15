@@ -1,25 +1,25 @@
-[gd_scene load_steps=10 format=3 uid="uid://ceolcwatpaicu"]
+[gd_scene load_steps=10 format=3]
 
-[ext_resource type="Script" path="res://scenes/ui/daynight/daynightcycle_ui.gd" id="1_altij"]
-[ext_resource type="Shader" path="res://assets/daynight/pixelperfect.gdshader" id="1_x3jdy"]
-[ext_resource type="FontFile" uid="uid://b0g8b5ej30cpb" path="res://assets/fonts/pixelmix.ttf" id="3_6qa0r"]
-[ext_resource type="Texture2D" uid="uid://bxwvsyss7yx7v" path="res://assets/daynight/daynightcycle-ui.png" id="3_so0y8"]
+[ext_resource type="Script" path="res://scenes/ui/daynight/daynightcycle_ui.gd" id="1_script"]
+[ext_resource type="Shader" path="res://assets/daynight/pixelperfect.gdshader" id="2_shader"]
+[ext_resource type="FontFile" path="res://assets/fonts/pixelmix.ttf" id="3_font"]
+[ext_resource type="Texture2D" path="res://assets/daynight/daynightcycle-ui.png" id="4_texture"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_qhbnj"]
-shader = ExtResource("1_x3jdy")
+shader = ExtResource("2_shader")
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_8xwu1"]
-shader = ExtResource("1_x3jdy")
+shader = ExtResource("2_shader")
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_5isbm"]
-atlas = ExtResource("3_so0y8")
+atlas = ExtResource("4_texture")
 region = Rect2(1, 1, 73, 43)
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_14tbr"]
-shader = ExtResource("1_x3jdy")
+shader = ExtResource("2_shader")
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ucvpk"]
-atlas = ExtResource("3_so0y8")
+atlas = ExtResource("4_texture")
 region = Rect2(2, 47, 16, 5)
 
 [node name="DayNightCycleUI" type="Control"]
@@ -30,7 +30,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-script = ExtResource("1_altij")
+script = ExtResource("1_script")
 
 [node name="TextureRect" type="TextureRect" parent="."]
 material = SubResource("ShaderMaterial_8xwu1")
@@ -50,7 +50,7 @@ offset_bottom = 20.0
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.898039, 0.576471, 0.419608, 1)
-theme_override_fonts/font = ExtResource("3_6qa0r")
+theme_override_fonts/font = ExtResource("3_font")
 theme_override_font_sizes/font_size = 8
 text = "Day 13"
 metadata/_edit_lock_ = true
@@ -62,7 +62,7 @@ offset_top = -1.0
 offset_right = 33.0
 offset_bottom = 10.0
 theme_override_colors/font_color = Color(0.490196, 0.219608, 0.2, 1)
-theme_override_fonts/font = ExtResource("3_6qa0r")
+theme_override_fonts/font = ExtResource("3_font")
 theme_override_font_sizes/font_size = 8
 text = "Day 13"
 metadata/_edit_lock_ = true
@@ -78,7 +78,7 @@ offset_bottom = 40.0
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.898039, 0.576471, 0.419608, 1)
-theme_override_fonts/font = ExtResource("3_6qa0r")
+theme_override_fonts/font = ExtResource("3_font")
 theme_override_font_sizes/font_size = 8
 text = "12:00 am"
 metadata/_edit_lock_ = true
@@ -90,7 +90,7 @@ offset_top = -1.0
 offset_right = 41.0
 offset_bottom = 10.0
 theme_override_colors/font_color = Color(0.490196, 0.219608, 0.2, 1)
-theme_override_fonts/font = ExtResource("3_6qa0r")
+theme_override_fonts/font = ExtResource("3_font")
 theme_override_font_sizes/font_size = 8
 text = "12:00 am"
 metadata/_edit_lock_ = true

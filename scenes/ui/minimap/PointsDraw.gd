@@ -6,8 +6,12 @@ const PLAYER_COLOR := Color(1.0, 0.0, 0.0)   # Red color for player
 @export var player: Node2D
 
 @onready var coordsLabel := $"../../CoordsLabel"
+@onready var tile_map = get_node("/root/Game/Level/Main/Map/TileMapLayer")
+
 func _ready():
-	tilemap = get_node("../../../../../Map/TileMap")
+	if !tile_map:
+		push_error("TileMapLayer node not found! Check the path: /root/Game/Level/Main/Map/TileMapLayer")
+		return
 
 func _process(_delta):
 	queue_redraw()

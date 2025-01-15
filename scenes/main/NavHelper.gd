@@ -1,14 +1,24 @@
 # godot 4.3
 extends Node2D
 
+@onready var tilemap = get_node_or_null("../Map/TileMap") if get_node_or_null("../Map/TileMap") else get_node_or_null("../Map/TileMapLayer")
+
+func _ready():
+	if !tilemap:
+		push_error("Neither TileMap nor TileMapLayer node found! Check paths: ../Map/TileMap or ../Map/TileMapLayer")
+		return
+	
+	# Make sure we have the right node type
+	if !tilemap is TileMap and !tilemap is TileMapLayer:
+		push_error("Found node at path but it's not a TileMap or TileMapLayer!")
+		return
+
 const WALKABLE_TILES = [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0)]  # List of walkable atlas coordinates
 const MIN_DISTANCE = 8  # Minimum distance in tiles
 const MAX_DISTANCE = 9  # Maximum distance in tiles
 
-@onready var tilemap = $"../Map/TileMap"
-
 func getNavigableTiles(playerId, minR, maxR):
-	var player = get_parent().get_node_or_null("Players/"+str(playerId))
+	var player = $"../Players".get_node_or_null(str(playerId))
 	if !player:
 		return
 	var player_tile_pos = tilemap.local_to_map(player.global_position)
@@ -56,7 +66,10 @@ func is_walkable(tile_pos: Vector2i) -> bool:
 	if atlas_coord == Vector2i(8,12) or not atlas_coord in WALKABLE_TILES:
 		return false
 	# Check if it's a fence in the terrain data
-	var terrain_data = tilemap.get_parent().get_node("Map").terrain_data
+	var map_node = $"../Map"
+	if !map_node:
+		return false
+	var terrain_data = map_node.terrain_data
 	if terrain_data.has(tile_pos) and terrain_data[tile_pos] == "fence":
 		return false
 	return true

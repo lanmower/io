@@ -1,8 +1,8 @@
-[gd_scene load_steps=8 format=3 uid="uid://dvf1rqy0jirrg"]
+[gd_scene load_steps=8 format=3]
 
-[ext_resource type="Script" path="res://scenes/ui/inventory/inventory_slot.gd" id="1_1nyx0"]
-[ext_resource type="Texture2D" uid="uid://d37ow65qu06eu" path="res://assets/ui/itemSlotSelected.png" id="1_bellk"]
-[ext_resource type="Texture2D" uid="uid://dwggash1qfa4b" path="res://assets/ui/itemSlot.png" id="1_fc2bw"]
+[ext_resource type="Script" path="res://scenes/ui/inventory/inventory_slot.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/ui/itemSlotSelected.png" id="2_selected"]
+[ext_resource type="Texture2D" path="res://assets/ui/itemSlot.png" id="3_slot"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_nl13p"]
 
@@ -19,7 +19,7 @@ tracks/0/keys = {
 "times": PackedFloat32Array(0, 0.1),
 "transitions": PackedFloat32Array(1, 1),
 "update": 1,
-"values": [ExtResource("1_bellk"), ExtResource("1_fc2bw")]
+"values": [ExtResource("2_selected"), ExtResource("3_slot")]
 }
 tracks/1/type = "value"
 tracks/1/imported = false
@@ -47,7 +47,7 @@ tracks/0/keys = {
 "times": PackedFloat32Array(0, 0.1),
 "transitions": PackedFloat32Array(1, 1),
 "update": 1,
-"values": [ExtResource("1_fc2bw"), ExtResource("1_bellk")]
+"values": [ExtResource("3_slot"), ExtResource("2_selected")]
 }
 tracks/1/type = "value"
 tracks/1/imported = false
@@ -73,12 +73,12 @@ offset_right = 48.0
 offset_bottom = 48.0
 pivot_offset = Vector2(23, 23)
 theme_override_styles/panel = SubResource("StyleBoxEmpty_nl13p")
-script = ExtResource("1_1nyx0")
+script = ExtResource("1_script")
 
 [node name="bgTexture" type="TextureRect" parent="."]
 texture_filter = 1
 layout_mode = 2
-texture = ExtResource("1_fc2bw")
+texture = ExtResource("3_slot")
 
 [node name="itemTexture" type="TextureRect" parent="."]
 layout_mode = 2

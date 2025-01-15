@@ -104,12 +104,12 @@ func _process(_delta):
 		# Handle running
 		if Input.is_action_pressed("run") and can_run and stamina > Constants.MIN_STAMINA_TO_RUN:
 			is_running = true
-			stamina = max(0, stamina - Constants.STAMINA_DRAIN_RATE * _delta)
-			speed = base_speed * Constants.RUN_SPEED_MULTIPLIER
+			stamina = max(0.0, stamina - Constants.STAMINA_DRAIN_RATE * _delta)
+			speed = int(base_speed * Constants.RUN_SPEED_MULTIPLIER)
 		else:
 			is_running = false
 			stamina = min(Constants.MAX_STAMINA, stamina + Constants.STAMINA_REGEN_RATE * _delta)
-			speed = base_speed
+			speed = int(base_speed)
 			
 		# Prevent running if stamina is too low
 		if stamina <= Constants.MIN_STAMINA_TO_RUN:
