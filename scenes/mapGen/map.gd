@@ -82,6 +82,10 @@ func _ready():
 
 func initialize_client():
 	print("Client initializing map")
+	if !tile_map:
+		push_error("Cannot initialize client - TileMap node not found!")
+		return
+		
 	clear_map()
 	print("Client requesting map data from server")
 	request_map_data.rpc_id(1)
@@ -92,6 +96,8 @@ func request_map_data():
 	if multiplayer.is_server():
 		var peer_id = multiplayer.get_remote_sender_id()
 		print("Server sending map data to peer ", peer_id)
+		# Wait a frame to ensure everything is set up
+		await get_tree().process_frame
 		send_full_map_to_client(peer_id)
 	else:
 		print("Warning: Non-server received map data request")
@@ -200,19 +206,24 @@ func send_full_map_to_client(peer_id: int):
 		print("Warning: Non-server tried to send map data")
 		return
 		
+	if !tile_map:
+		push_error("Cannot send map data - TileMap node not found!")
+		return
+		
 	print("Preparing map data for client ", peer_id)
 	var map_tiles = []
 	for y in range(map_height):
 		for x in range(map_width):
 			var pos = Vector2i(x, y)
-			var atlas_coords = tile_map.get_cell_atlas_coords(pos)
-			if atlas_coords != Vector2i(-1, -1):  # If tile exists
+			var source_id = tile_map.get_cell_source_id(pos)
+			if source_id != -1:  # If tile exists
+				var atlas_coords = tile_map.get_cell_atlas_coords(pos)
 				var terrain_type = terrain_data.get(pos, "")
 				map_tiles.append([pos, atlas_coords, terrain_type])
 	
 	print("Server sending ", map_tiles.size(), " tiles to client ", peer_id)
 	if map_tiles.size() > 0:
-		print("First tile data: pos=", map_tiles[0][0], " atlas=", map_tiles[0][1])
+		print("First tile data: pos=", map_tiles[0][0], " atlas=", map_tiles[0][1], " type=", map_tiles[0][2])
 	sync_full_map.rpc_id(peer_id, map_tiles)
 	sync_walkable_tiles.rpc_id(peer_id, walkable_tiles)
 
@@ -226,15 +237,21 @@ func sync_full_map(map_tiles: Array):
 	clear_map()
 	
 	# map_tiles is array of [pos, atlas_coords, terrain_type]
+	var tiles_placed = 0
 	for tile in map_tiles:
 		var pos = tile[0]
 		var atlas_coords = tile[1]
 		var terrain_type = tile[2]
 		
-		tile_map.set_cell(pos, tileset_source, atlas_coords)
-		terrain_data[pos] = terrain_type
+		if pos.x >= 0 and pos.x < map_width and pos.y >= 0 and pos.y < map_height:
+			tile_map.set_cell(pos, tileset_source, atlas_coords)
+			terrain_data[pos] = terrain_type
+			tiles_placed += 1
+			
+			if tiles_placed == 1 or tiles_placed % 1000 == 0:
+				print("Client progress: placed ", tiles_placed, " tiles")
 	
-	print("Client finished processing map data, placed ", map_tiles.size(), " tiles")
+	print("Client finished processing map data, placed ", tiles_placed, " tiles")
 
 func generate_terrain():
 	print("Starting terrain generation")
