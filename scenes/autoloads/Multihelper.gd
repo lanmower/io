@@ -169,7 +169,8 @@ func sendGameData(playerData, mapData):
 	if mapData.has("current_day"):
 		main.current_day = mapData["current_day"]
 		var dayNight = main.get_node("dayNight")
-		dayNight.sync_time.rpc(mapData["current_day"], mapData["current_hour"], mapData["current_minute"])
+		if dayNight and "current_hour" in mapData and "current_minute" in mapData:
+			dayNight.sync_time.rpc(mapData["current_day"], mapData["current_hour"], mapData["current_minute"])
 	
 	# Initialize map on client
 	if !multiplayer.is_server():
