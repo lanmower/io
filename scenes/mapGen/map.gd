@@ -6,7 +6,8 @@ var map_height = 100
 
 var tileset_source = 1  # This matches the source ID in the tileset
 
-@onready var tile_map: TileMapLayer = $TileMapLayer  # Changed from TileMap to TileMapLayer
+@onready var tile_map_layer: TileMapLayer = $TileMapLayer  # The layer we'll work with
+@onready var tile_map: TileMap = tile_map_layer.get_parent() as TileMap  # Cast parent to TileMap
 
 var grassAtlasCoords = [Vector2i(0,0), Vector2i(1,0), Vector2i(2,0), Vector2i(3,0)]
 var waterCoors = [Vector2i(18,0), Vector2i(19,0)]
@@ -24,9 +25,9 @@ var tile_size = 64
 
 func _ready():
 	print("Map _ready called, is_server: ", multiplayer.is_server())
-	# Verify TileMap reference
-	if !tile_map:
-		push_error("TileMap node not found!")
+	# Verify TileMap references
+	if !tile_map_layer or !tile_map:
+		push_error("TileMap or TileMapLayer node not found!")
 		return
 		
 	# Verify tileset source
@@ -82,8 +83,8 @@ func _ready():
 
 func initialize_client():
 	print("Client initializing map")
-	if !tile_map:
-		push_error("Cannot initialize client - TileMap node not found!")
+	if !tile_map_layer:
+		push_error("Cannot initialize client - TileMapLayer node not found!")
 		return
 		
 	clear_map()
@@ -96,8 +97,8 @@ func request_map_data():
 	if multiplayer.is_server():
 		var peer_id = multiplayer.get_remote_sender_id()
 		print("Server sending map data to peer ", peer_id)
-		# Wait a frame to ensure everything is set up
-		await get_tree().process_frame
+		# Wait a few frames to ensure everything is set up
+		await get_tree().create_timer(0.5).timeout
 		send_full_map_to_client(peer_id)
 	else:
 		print("Warning: Non-server received map data request")
@@ -111,10 +112,10 @@ func generateMap():
 	
 	# Clear any invalid tiles from walkable_tiles
 	walkable_tiles = walkable_tiles.filter(func(pos): 
-		var tile_data = tile_map.get_cell_tile_data(pos)
+		var tile_data = tile_map_layer.get_cell_tile_data(pos)
 		if !tile_data:  # No tile at this position
 			return false
-		var coords = tile_map.get_cell_atlas_coords(pos)
+		var coords = tile_map_layer.get_cell_atlas_coords(pos)
 		return not waterCoors.has(coords)
 	)
 	
@@ -132,26 +133,26 @@ func sync_terrain_data(data: Dictionary):
 	terrain_data = data
 
 func clear_map():
-	if !tile_map:
-		push_error("Cannot clear map - TileMap node not found!")
+	if !tile_map_layer:
+		push_error("Cannot clear map - TileMapLayer node not found!")
 		return
 		
 	terrain_data.clear()
 	walkable_tiles.clear()
 	for x in range(map_width):
 		for y in range(map_height):
-			tile_map.erase_cell(Vector2i(x, y))
+			tile_map_layer.erase_cell(Vector2i(x, y))
 
 func get_height_at(pos: Vector2i) -> float:
 	if pos.x < 0 or pos.x >= map_width or pos.y < 0 or pos.y >= map_height:
 		return 0.0
 		
 	# First check if there's a tile at this position
-	var tile_data = tile_map.get_cell_tile_data(pos)
+	var tile_data = tile_map_layer.get_cell_tile_data(pos)
 	if !tile_data:  # No tile at this position
 		return 0.0
 		
-	var atlas_coords = tile_map.get_cell_atlas_coords(pos)
+	var atlas_coords = tile_map_layer.get_cell_atlas_coords(pos)
 	
 	if waterCoors.has(atlas_coords):
 		return 0.0
@@ -164,9 +165,9 @@ func get_height_at(pos: Vector2i) -> float:
 		for dy in range(-max_distance, max_distance + 1):
 			var check_pos = pos + Vector2i(dx, dy)
 			if check_pos.x >= 0 and check_pos.x < map_width and check_pos.y >= 0 and check_pos.y < map_height:
-				tile_data = tile_map.get_cell_tile_data(check_pos)
+				tile_data = tile_map_layer.get_cell_tile_data(check_pos)
 				if tile_data:  # Only check if there's a tile
-					var check_coords = tile_map.get_cell_atlas_coords(check_pos)
+					var check_coords = tile_map_layer.get_cell_atlas_coords(check_pos)
 					if waterCoors.has(check_coords):
 						var dist = sqrt(dx * dx + dy * dy)
 						min_dist = min(min_dist, dist)
@@ -177,7 +178,7 @@ func get_height_at(pos: Vector2i) -> float:
 	return 1.0
 
 func is_walkable(tile_pos: Vector2i) -> bool:
-	var atlas_coord = tile_map.get_cell_atlas_coords(tile_pos)
+	var atlas_coord = tile_map_layer.get_cell_atlas_coords(tile_pos)
 	# Check if it's a wall tile (8,12) or if it's not in grassAtlasCoords
 	if atlas_coord == Vector2i(8,12) or not grassAtlasCoords.has(atlas_coord):
 		return false
@@ -196,7 +197,7 @@ func get_tile_neighbors(tile_pos: Vector2i) -> Array:
 	
 	var valid_neighbors = []
 	for neighbor in neighbors:
-		if tile_map.get_cell_source_id(neighbor) != -1:  # Check if the cell is valid
+		if tile_map_layer.get_cell_source_id(neighbor) != -1:  # Check if the cell is valid
 			valid_neighbors.append(neighbor)
 	
 	return valid_neighbors
@@ -206,8 +207,8 @@ func send_full_map_to_client(peer_id: int):
 		print("Warning: Non-server tried to send map data")
 		return
 		
-	if !tile_map:
-		push_error("Cannot send map data - TileMap node not found!")
+	if !tile_map_layer:
+		push_error("Cannot send map data - TileMapLayer node not found!")
 		return
 		
 	print("Preparing map data for client ", peer_id)
@@ -215,22 +216,40 @@ func send_full_map_to_client(peer_id: int):
 	for y in range(map_height):
 		for x in range(map_width):
 			var pos = Vector2i(x, y)
-			var source_id = tile_map.get_cell_source_id(pos)
+			var source_id = tile_map_layer.get_cell_source_id(pos)
 			if source_id != -1:  # If tile exists
-				var atlas_coords = tile_map.get_cell_atlas_coords(pos)
+				var atlas_coords = tile_map_layer.get_cell_atlas_coords(pos)
 				var terrain_type = terrain_data.get(pos, "")
 				map_tiles.append([pos, atlas_coords, terrain_type])
 	
 	print("Server sending ", map_tiles.size(), " tiles to client ", peer_id)
+	if map_tiles.size() == 0:
+		push_error("No tiles to send! Map may not be generated yet.")
+		# Try to regenerate the map
+		if !terrain_data.size():
+			print("Regenerating map before sending...")
+			generateMap()
+			# Rebuild map_tiles array after regeneration
+			for y in range(map_height):
+				for x in range(map_width):
+					var pos = Vector2i(x, y)
+					var source_id = tile_map_layer.get_cell_source_id(pos)
+					if source_id != -1:
+						var atlas_coords = tile_map_layer.get_cell_atlas_coords(pos)
+						var terrain_type = terrain_data.get(pos, "")
+						map_tiles.append([pos, atlas_coords, terrain_type])
+	
 	if map_tiles.size() > 0:
 		print("First tile data: pos=", map_tiles[0][0], " atlas=", map_tiles[0][1], " type=", map_tiles[0][2])
-	sync_full_map.rpc_id(peer_id, map_tiles)
-	sync_walkable_tiles.rpc_id(peer_id, walkable_tiles)
+		sync_full_map.rpc_id(peer_id, map_tiles)
+		sync_walkable_tiles.rpc_id(peer_id, walkable_tiles)
+	else:
+		push_error("Still no tiles after regeneration attempt!")
 
 @rpc("authority", "call_remote", "reliable")
 func sync_full_map(map_tiles: Array):
-	if !tile_map:
-		push_error("Cannot sync map - TileMap node not found!")
+	if !tile_map_layer:
+		push_error("Cannot sync map - TileMapLayer node not found!")
 		return
 		
 	print("Client received map data with ", map_tiles.size(), " tiles")
@@ -244,14 +263,19 @@ func sync_full_map(map_tiles: Array):
 		var terrain_type = tile[2]
 		
 		if pos.x >= 0 and pos.x < map_width and pos.y >= 0 and pos.y < map_height:
-			tile_map.set_cell(pos, tileset_source, atlas_coords)
-			terrain_data[pos] = terrain_type
+			tile_map_layer.set_cell(pos, tileset_source, atlas_coords)
+			if terrain_type:
+				terrain_data[pos] = terrain_type
 			tiles_placed += 1
 			
 			if tiles_placed == 1 or tiles_placed % 1000 == 0:
 				print("Client progress: placed ", tiles_placed, " tiles")
 	
 	print("Client finished processing map data, placed ", tiles_placed, " tiles")
+	if tiles_placed == 0:
+		print("Warning: No tiles were placed! Requesting map data again...")
+		await get_tree().create_timer(1.0).timeout
+		request_map_data.rpc_id(1)
 
 func generate_terrain():
 	print("Starting terrain generation")
@@ -339,13 +363,13 @@ func generate_terrain():
 	for pos in terrain_types:
 		match terrain_types[pos]:
 			"grass":
-				tile_map.set_cell(pos, tileset_source, grassAtlasCoords.pick_random())
+				tile_map_layer.set_cell(pos, tileset_source, grassAtlasCoords.pick_random())
 			"water":
-				tile_map.set_cell(pos, tileset_source, waterCoors.pick_random())
+				tile_map_layer.set_cell(pos, tileset_source, waterCoors.pick_random())
 			"sand":
-				tile_map.set_cell(pos, tileset_source, sandCoords.pick_random())
+				tile_map_layer.set_cell(pos, tileset_source, sandCoords.pick_random())
 			"cement":
-				tile_map.set_cell(pos, tileset_source, cementCoords.pick_random())
+				tile_map_layer.set_cell(pos, tileset_source, cementCoords.pick_random())
 	
 	# Add fences around cement regions
 	add_fences_to_cement(terrain_types, cement_regions)
@@ -370,9 +394,9 @@ func generate_terrain():
 	for x in range(map_width):
 		for y in range(map_height):
 			var pos = Vector2i(x, y)
-			var tile_data = tile_map.get_cell_tile_data(pos)
+			var tile_data = tile_map_layer.get_cell_tile_data(pos)
 			if tile_data:
-				var coords = tile_map.get_cell_atlas_coords(pos)
+				var coords = tile_map_layer.get_cell_atlas_coords(pos)
 				if grassAtlasCoords.has(coords):
 					walkable_tiles.append(pos)
 	
@@ -384,9 +408,9 @@ func generate_terrain():
 	for x in range(map_width):
 		for y in range(map_height):
 			var pos = Vector2i(x, y)
-			var tile_data = tile_map.get_cell_tile_data(pos)
+			var tile_data = tile_map_layer.get_cell_tile_data(pos)
 			if tile_data:
-				var coords = tile_map.get_cell_atlas_coords(pos)
+				var coords = tile_map_layer.get_cell_atlas_coords(pos)
 				if grassAtlasCoords.has(coords):
 					terrain_data[pos] = "grass"
 				elif waterCoors.has(coords):
@@ -452,7 +476,7 @@ func add_fences_to_cement(terrain_types: Dictionary, cement_regions: Array) -> v
 				for pos in side:
 					if not gap_positions.has(pos):
 						terrain_types[pos] = "fence"
-						tile_map.set_cell(pos, tileset_source, wallCoords[0])
+						tile_map_layer.set_cell(pos, tileset_source, wallCoords[0])
 
 func add_beaches_around_cement(cement_regions: Array, max_beach_width: int = 3) -> void:
 	var beach_noise = FastNoiseLite.new()
@@ -499,7 +523,7 @@ func add_beaches_around_cement(cement_regions: Array, max_beach_width: int = 3) 
 						var gap_noise = beach_noise.get_noise_2d(x * 0.4, y * 0.4)
 						if gap_noise > -0.7 and min_dist <= local_beach_width:  # ~15% chance of gaps
 							terrain_data[pos] = "sand"
-							tile_map.set_cell(pos, tileset_source, sandCoords.pick_random())
+							tile_map_layer.set_cell(pos, tileset_source, sandCoords.pick_random())
 
 func find_islands() -> Array:
 	var islands = []
@@ -508,9 +532,9 @@ func find_islands() -> Array:
 	for x in range(map_width):
 		for y in range(map_height):
 			var pos = Vector2i(x, y)
-			var tile_data = tile_map.get_cell_tile_data(pos)
+			var tile_data = tile_map_layer.get_cell_tile_data(pos)
 			if tile_data:
-				var coords = tile_map.get_cell_atlas_coords(pos)
+				var coords = tile_map_layer.get_cell_atlas_coords(pos)
 				if grassAtlasCoords.has(coords) and not visited.has(pos):
 					# Found a new unvisited grass tile, start a new island
 					var island = []
@@ -536,9 +560,9 @@ func find_islands() -> Array:
 								if neighbor.x < 0 or neighbor.x >= map_width or neighbor.y < 0 or neighbor.y >= map_height:
 									continue
 									
-								tile_data = tile_map.get_cell_tile_data(neighbor)
+								tile_data = tile_map_layer.get_cell_tile_data(neighbor)
 								if tile_data:
-									coords = tile_map.get_cell_atlas_coords(neighbor)
+									coords = tile_map_layer.get_cell_atlas_coords(neighbor)
 									if grassAtlasCoords.has(coords) and not visited.has(neighbor):
 										to_visit.append(neighbor)
 					
@@ -608,11 +632,11 @@ func connect_two_islands(island1: Array, island2: Array) -> void:
 						var edge_noise = noise.get_noise_2d(pos.x * 0.2, pos.y * 0.2)
 						if dist <= radius - 2 or edge_noise > 0:
 							# Check if we're replacing water or sand
-							var tile_data = tile_map.get_cell_tile_data(pos)
+							var tile_data = tile_map_layer.get_cell_tile_data(pos)
 							if tile_data:
-								var coords = tile_map.get_cell_atlas_coords(pos)
+								var coords = tile_map_layer.get_cell_atlas_coords(pos)
 								if waterCoors.has(coords) or sandCoords.has(coords):
 									# Set grass tile
-									tile_map.set_cell(pos, tileset_source, grassAtlasCoords.pick_random())
+									tile_map_layer.set_cell(pos, tileset_source, grassAtlasCoords.pick_random())
 									terrain_data[pos] = "grass"
 									walkable_tiles.append(pos)
