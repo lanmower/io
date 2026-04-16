@@ -2,3 +2,5 @@
 .godot/
 /android/
 *.import
+config.bat
+node_modules
