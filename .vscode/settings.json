@@ -1,6 +1,5 @@
 {
   "godotTools.editorPath.godot4": "c:\\D\\Games\\Godot\\godot.exe",
-  "task.allowAutomaticTasks": true,
   "debug.openDebug": "neverOpen",
   "terminal.integrated.inheritEnv": false,
   "tasks": {
